@@ -98,6 +98,10 @@ h2, h3, p { margin: 0; }
 #suggestions { display: grid; gap: 4px; margin-top: 8px; }
 #suggestions:empty { display: none; }
 #suggestions button { text-align: left; padding: 9px 10px; border: 0; border-radius: 8px; background: var(--creux); }
+#suggestions button[aria-selected="true"] { background: var(--accent-doux); box-shadow: inset 0 0 0 1.5px var(--accent); }
+#suggestions button b { font-weight: 700; }
+#suggestions button small { display: block; color: var(--doux); font-size: 12.5px; font-weight: 400; }
+#suggestions .info { padding: 8px 2px 0; color: var(--doux); font-size: 13px; }
 .curseur { display: grid; grid-template-columns: 96px minmax(0, 1fr) 58px; gap: 10px; align-items: center; margin-top: 10px; font-size: 13.5px; }
 .curseur input { width: 100%; accent-color: var(--accent); }
 .curseur output { text-align: right; font-variant-numeric: tabular-nums; color: var(--doux); }
@@ -298,8 +302,9 @@ h2, h3, p { margin: 0; }
       <div class="cartes">
         <button class="choix" type="button" data-fond="adresse" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.100 7-11a7 7 0 1 0-14 0c0 4.900 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/></svg><span><b>Mon adresse</b><small>Vue du ciel de votre maison, à l’échelle</small></span></button>
         <div id="bloc-adresse" hidden>
-          <form class="adresse" id="form-adresse"><input id="adresse" type="text" placeholder="12 rue des Lilas, Clermont-Ferrand" aria-label="Adresse" autocomplete="street-address"><button type="submit">Chercher</button></form>
-          <div id="suggestions"></div>
+          <form class="adresse" id="form-adresse"><input id="adresse" type="text" placeholder="12 rue des Lilas, Clermont-Ferrand" aria-label="Adresse" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggestions" aria-autocomplete="list"><button type="submit">Chercher</button></form>
+          <div id="suggestions" role="listbox" aria-label="Adresses proposées"></div>
+          <p class="aide" id="aide-adresse">Tapez le numéro, la rue et la ville : les propositions s’affichent au fur et à mesure.</p>
         </div>
         <button class="choix" type="button" data-fond="plan" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4M5 15v4h14v-4"/></svg><span><b>Mon plan ou ma photo</b><small>PDF ou image, avec réglage de l’échelle</small></span></button>
         <button class="choix" type="button" data-fond="exemple" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg><span><b id="fond-vide">Jardin d’exemple</b><small>Pour commencer tout de suite</small></span></button>
@@ -1682,16 +1687,39 @@ document.querySelectorAll("[data-fond]").forEach(b => b.addEventListener("click"
   if (k === "plan") $("fichier").click();
   if (k === "exemple") { fond = null; etat.site = null; afficherAjouts(); mode = null; calibration = []; bandeau(""); fondActif(); cadrer(); }
 }));
-$("form-adresse").addEventListener("submit", async e => {
-  e.preventDefault();
-  const q = $("adresse").value.trim(), l = $("suggestions"); if (q.length < 4) return;
-  l.textContent = "Recherche…";
+let propositions = [], choixAdresse = -1, minuterieAdresse = 0, requeteAdresse = 0;
+function afficherPropositions(liste, info) {
+  const l = $("suggestions"), ch = $("adresse"); propositions = liste; choixAdresse = -1; l.innerHTML = "";
+  liste.forEach((p, i) => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "option"); b.setAttribute("aria-selected", "false"); b.dataset.i = i; b.innerHTML = `<b>${esc(p.rue)}</b><small>${esc(p.ville)}</small>`; l.appendChild(b); });
+  if (info) { const p = document.createElement("p"); p.className = "info"; p.textContent = info; l.appendChild(p); }
+  ch.setAttribute("aria-expanded", String(liste.length > 0));
+}
+function surligner(i) { choixAdresse = i; $("suggestions").querySelectorAll("[role=option]").forEach((b, k) => b.setAttribute("aria-selected", String(k === i))); }
+function choisirAdresse(p) { $("adresse").value = p.label; afficherPropositions([]); chargerAerienne(p.lon, p.lat); }
+async function chercherAdresses(q, complet) {
+  const id = ++requeteAdresse;
   try {
-    const r = await fetch(`https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=4`), d = await r.json();
-    l.textContent = "";
-    if (!d.features || !d.features.length) { l.textContent = "Adresse introuvable. Précisez la commune."; return; }
-    for (const f of d.features) { const b = document.createElement("button"); b.type = "button"; b.textContent = f.properties.label; b.addEventListener("click", () => { l.textContent = ""; chargerAerienne(f.geometry.coordinates[0], f.geometry.coordinates[1]); }); l.appendChild(b); }
-  } catch (err) { l.textContent = "La vue aérienne fonctionne une fois le site en ligne. Utilisez un plan ou le jardin d’exemple ici."; }
+    const r = await fetch(`https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6&autocomplete=${complet ? 0 : 1}`), d = await r.json();
+    if (id !== requeteAdresse) return;
+    const liste = (d.features || []).map(f => { const p = f.properties, rue = p.type === "municipality" ? p.city : (p.name || p.label), ville = p.type === "municipality" ? `${p.postcode || ""} ${p.context || ""}`.trim() : `${p.postcode || ""} ${p.city || ""}`.trim(); return { label: p.label, rue, ville, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }; });
+    afficherPropositions(liste, liste.length ? "" : complet ? "Adresse introuvable. Ajoutez la commune ou le code postal." : "");
+    if (complet && liste.length === 1) choisirAdresse(liste[0]);
+  } catch (err) { if (id === requeteAdresse) afficherPropositions([], "La vue aérienne fonctionne une fois le site en ligne. Utilisez un plan ou le jardin d’exemple ici."); }
+}
+$("adresse").addEventListener("input", e => { const q = e.target.value.trim(); clearTimeout(minuterieAdresse); if (q.length < 3) { afficherPropositions([]); return; } minuterieAdresse = setTimeout(() => chercherAdresses(q, false), 220); });
+$("adresse").addEventListener("keydown", e => {
+  if (!propositions.length) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); surligner((choixAdresse + 1) % propositions.length); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); surligner((choixAdresse - 1 + propositions.length) % propositions.length); }
+  else if (e.key === "Escape") afficherPropositions([]);
+});
+$("suggestions").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (b) choisirAdresse(propositions[+b.dataset.i]); });
+$("form-adresse").addEventListener("submit", e => {
+  e.preventDefault(); clearTimeout(minuterieAdresse);
+  if (choixAdresse >= 0 && propositions[choixAdresse]) { choisirAdresse(propositions[choixAdresse]); return; }
+  if (propositions.length === 1) { choisirAdresse(propositions[0]); return; }
+  const q = $("adresse").value.trim(); if (q.length < 3) return;
+  afficherPropositions([], "Recherche…"); chercherAdresses(q, true);
 });
 const mondeVersFond = P => { const f = fond, a = (f.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = f.x + f.l * f.m / 2, cy = f.y + f.h * f.m / 2, dx = P.x - cx, dy = P.y - cy; return { px: (dx * ca + dy * sa) / f.m + f.l / 2, py: (-dx * sa + dy * ca) / f.m + f.h / 2 }; };
 function pointFond(px, py) { const f = fond, a = (f.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), lx = (px - f.l / 2) * f.m, ly = (py - f.h / 2) * f.m; return { x: f.x + f.l * f.m / 2 + lx * ca - ly * sa, y: f.y + f.h * f.m / 2 + lx * sa + ly * ca }; }
