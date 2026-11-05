@@ -353,9 +353,12 @@ h2, h3, p { margin: 0; }
       <h2>Ajoutez les éléments</h2>
       <p class="chapo" id="chapo-elements"></p>
       <div id="bloc-ouvertures">
-        <h3 style="margin-top:0">Ouvertures</h3>
+        <h3 style="margin-top:0" id="titre-ouvertures">Ouvertures</h3>
         <div class="ajouts" id="ajout-ouvertures"></div>
         <div class="liste" id="liste-ouvertures"></div>
+        <p class="aide" id="aide-ouvertures" hidden>Posées sur le bord de la terrasse qui touche la maison. Elles servent au plan et au rendu 3D.</p>
+      </div>
+      <div id="bloc-pieces">
         <h3>Ajouter une pièce séparée</h3>
         <div class="ajouts" id="ajout-pieces"></div>
         <p class="aide">Elle reçoit une porte et peut avoir son propre revêtement.</p>
@@ -536,8 +539,12 @@ const TEINTES = ["#E3F2DC", "#BCE3C9", "#8FD0B8", "#5DB8A6", "#3A9B90", "#27797C
 const ETAPES = ["projet", "forme", "elements", "terrain", "revetement", "pose", "metre"];
 const OUVERTURES = {
   porte: { nom: "Porte", l: 0.83, plinthe: true, seuil: true }, baie: { nom: "Porte-fenêtre", l: 1.8, plinthe: true, seuil: true },
-  fenetre: { nom: "Fenêtre", l: 1.2 }, passage: { nom: "Passage", l: 1.2, plinthe: true, seuil: true }
+  fenetre: { nom: "Fenêtre", l: 1.2 }, passage: { nom: "Passage", l: 1.2, plinthe: true, seuil: true },
+  coulissante: { nom: "Baie coulissante", l: 2.4, ext: 1, h: 2.15, sol: 0, vantaux: 2 }, galandage: { nom: "Baie à galandage", l: 3, ext: 1, h: 2.15, sol: 0, vantaux: 2 },
+  pfext: { nom: "Porte-fenêtre", l: 1.4, ext: 1, h: 2.15, sol: 0, vantaux: 2, battant: 1 }, porteext: { nom: "Porte", l: 0.9, ext: 1, h: 2.1, sol: 0, pleine: 1 },
+  fenext: { nom: "Fenêtre", l: 1.2, ext: 1, h: 1.25, sol: 0.9, vantaux: 2 }
 };
+const ouverturesLieu = () => Object.entries(OUVERTURES).filter(([, v]) => !!v.ext === ext());
 const PIECES = { chambre: { nom: "Pièce", w: 3.5, d: 3 }, couloirsep: { nom: "Couloir", w: 1.2, d: 4 }, salle: { nom: "Salle de bain", w: 2, d: 2.5, humide: true } };
 const CHAMPS = ["id", "nom", "forme", "poly", "produit", "angle", "motif", "depart", "graine", "marge", "support", "chauffage", "humide", "ecart", "ouvertures", "elements", "plinthes"];
 const ZONES = { couloir: { nom: "Couloir", w: 1, d: 3 }, piece: { nom: "Pièce voisine", w: 3, d: 3 }, niche: { nom: "Niche ou placard", w: 1.2, d: 0.6 } };
@@ -701,7 +708,7 @@ function bords() {
 function ancrage(o) {
   let m = null;
   for (const b of bords()) { const t = clamp(((o.x - b.A.x) * b.ux + (o.y - b.A.y) * b.uy) / b.len, 0, 1), d = Math.hypot(b.A.x + b.ux * t * b.len - o.x, b.A.y + b.uy * t * b.len - o.y); if (!m || d < m.d - 1e-9) m = { ...b, t, d }; }
-  const l = Math.min(o.l, m.len), demi = l / 2 / m.len, t = clamp(m.t, demi, 1 - demi);
+  const l = Math.min(o.l, m.len), demi = Math.min(0.5, l / 2 / m.len), t = clamp(m.t, demi, 1 - demi);
   return { ...m, t, l, cx: m.A.x + m.ux * t * m.len, cy: m.A.y + m.uy * t * m.len };
 }
 function terrain() {
@@ -1006,7 +1013,16 @@ function dessinerMurs() {
 }
 function dessinerOuvertures() {
   for (const o of etat.ouvertures) {
-    const a = ancrage(o), g = -a.l / 2; ctx.save(); transformBord(a);
+    const d = OUVERTURES[o.type], a = ancrage(o), g = -a.l / 2; ctx.save(); transformBord(a);
+    if (d.ext) {
+      const ep = 0.22, zz = cam.z;
+      ctx.fillStyle = "#B4694F"; ctx.fillRect(g - 0.12, -ep, a.l + 0.24, ep); ctx.fillStyle = d.pleine ? "#8C6A48" : "#CFE3EE"; ctx.fillRect(g, -ep + 0.03, a.l, ep - 0.06);
+      ctx.lineWidth = 1.4 / zz; ctx.strokeStyle = "#16201B"; ctx.strokeRect(g, -ep + 0.03, a.l, ep - 0.06);
+      const nv = d.vantaux || 1; ctx.beginPath(); for (let k = 1; k < nv; k++) { ctx.moveTo(g + a.l * k / nv, -ep + 0.03); ctx.lineTo(g + a.l * k / nv, -0.03); } ctx.stroke();
+      if (!d.pleine && !d.battant && nv > 1) { ctx.lineWidth = 2.4 / zz; ctx.beginPath(); ctx.moveTo(g + a.l * 0.08, -ep / 2); ctx.lineTo(g + a.l * 0.42, -ep / 2); ctx.moveTo(g + a.l * 0.36, -ep / 2 - 0.04); ctx.lineTo(g + a.l * 0.42, -ep / 2); ctx.lineTo(g + a.l * 0.36, -ep / 2 + 0.04); ctx.stroke(); }
+      if (d.battant || d.pleine) { ctx.lineWidth = 1 / zz; ctx.setLineDash([4 / zz, 3 / zz]); const w = d.pleine ? a.l : a.l / 2; ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, w); ctx.arc(g, 0, w, Math.PI / 2, 0, true); if (!d.pleine) { ctx.moveTo(-g, 0); ctx.lineTo(-g, w); ctx.arc(-g, 0, w, Math.PI / 2, Math.PI); } ctx.stroke(); }
+      ctx.restore(); continue;
+    }
     ctx.fillStyle = fond ? "#D9D4C9" : "#EFEDE7"; ctx.fillRect(g, -0.002, a.l, 0.17);
     ctx.lineWidth = 1.6 / cam.z; ctx.strokeStyle = "#16201B";
     if (o.type === "porte") {
@@ -1193,7 +1209,7 @@ function choisirOutil(o, type = "") {
   document.querySelectorAll("#ajout-ouvertures [data-o], #ajout-zones [data-z], #ajout-pieces [data-n]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.o || b.dataset.z || b.dataset.n) === type && !!type)));
   const textes = { ajuster: "Glissez un point, ou un bord pour le décaler. Touchez une cote pour saisir une longueur.", ajouter: "Touchez un bord pour y placer un point. Avec deux points sur un bord, glissez le segment entre eux pour créer un décroché.", retirer: "Touchez un point rouge pour le retirer." };
   $("aide-outil").textContent = textes[o] || textes.ajuster;
-  $("aide-elements").textContent = o === "ouverture" ? "Touchez un mur pour placer l’ouverture." : o === "zone" ? "Touchez un mur pour y raccorder cette surface. Ajustez ensuite ses cotes à l’étape Forme." : o === "piece" ? "Touchez le mur où ouvrir la nouvelle pièce." : ext() ? "Glissez un élément sur le plan. La terrasse, sa structure et le métré se recalculent." : "Glissez un élément sur le plan : il s’aimante aux murs. Les coupes et le métré se recalculent.";
+  $("aide-elements").textContent = o === "ouverture" ? (ext() ? "Touchez le bord de la terrasse qui longe la maison." : "Touchez un mur pour placer l’ouverture.") : o === "zone" ? "Touchez un mur pour y raccorder cette surface. Ajustez ensuite ses cotes à l’étape Forme." : o === "piece" ? "Touchez le mur où ouvrir la nouvelle pièce." : ext() ? "Glissez un élément sur le plan. La terrasse, sa structure et le métré se recalculent." : "Glissez un élément sur le plan : il s’aimante aux murs. Les coupes et le métré se recalculent.";
   planifier();
 }
 function choisirPiece(i) {
@@ -1243,7 +1259,7 @@ scene.addEventListener("pointerdown", e => {
     const i = +d.b;
     if (outil === "ajouter") insererPoint(i, m);
     else if (outil === "marche") { memoriser(); const b = bords()[i], l = Math.min(1.2, b.len); etat.marches.push({ x: m.x, y: m.y, l }); choisirOutil("ajuster"); synchroniser(); cadrer(); }
-    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); choisirOutil("ajuster"); synchroniser(); }
+    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); choisirOutil("ajuster"); synchroniser(); if (ext()) toast("Ouverture posée. Glissez-la le long du bord."); }
     else if (outil === "zone") ajouterZone(i, m);
     else if (outil === "piece") ajouterPiece(i, m);
     geste = { type: "rien" }; return;
@@ -1347,6 +1363,7 @@ function metre() {
     s.push(["Plots réglables", pl]);
     s.push(["Fixations", [[p.fix === "vis" ? "Vis inox" : "Clips de fixation", fr(c.fixations), p.fix === "vis" ? `${fr(Math.ceil(c.fixations / 200))} boîtes de 200` : `${fr(Math.ceil(c.fixations / 100))} boîtes de 100`]]]);
     if (etat.habillage) s.push(["Habillage", [["Habillage des côtés", ml(c.perimetre), `Hauteur ${cm(c.hMin)} à ${cm(c.hMax)}`]]]);
+    if (etat.ouvertures.length) s.push(["Ouvertures de la maison", ouverturesLieu().map(([k, v]) => [v.nom, etat.ouvertures.filter(o => o.type === k)]).filter(([, l]) => l.length).map(([a, l]) => [a, fr(l.length), `Largeur ${l.map(o => fr(ancrage(o).l, 2) + " m").join(", ")}`])]);
     if (etat.spots) s.push(["Éclairage", [["Spots encastrés", fr(etat.spots)], ["Transformateur", "1"]]]);
     if (c.marches.length) s.push(["Marches", c.marches.flatMap((m, i) => { const li = Math.ceil(m.l / 0.5) + 1, lg = Math.hypot(m.H, m.course); return [[`Accès ${i + 1}, largeur ${ml(m.l)}`, `${m.nb} marche${m.nb > 1 ? "s" : ""}`, `Hauteur ${cm1(m.r)}, profondeur ${cm(m.g)}, dénivelé ${cm(m.H)}`], ["Limons", fr(li), `Longueur ${ml(lg)}`], ["Lames par marche", fr(Math.ceil(m.g / c.pas)), "Comptées dans le total des lames"]]; })]);
   } else {
@@ -1370,7 +1387,7 @@ function metre() {
     if (seuils.length) acc.push(["Barres de seuil", fr(seuils.length), `Longueur totale ${ml(seuils.reduce((s0, o) => s0 + ancrage(o).l, 0))}`]);
     s.push(["Accessoires", acc]);
     const nbFen = etat.ouvertures.filter(o => o.type === "fenetre").length;
-    if (etat.ouvertures.length) s.push(["Ouvertures", Object.entries(OUVERTURES).map(([k, v]) => [v.nom, etat.ouvertures.filter(o => o.type === k).length]).filter(([, n]) => n).map(([a, n]) => [a, fr(n), a === "Fenêtre" && nbFen ? "Sans effet sur le sol ni les plinthes" : ""])]);
+    if (etat.ouvertures.length) s.push(["Ouvertures", ouverturesLieu().map(([k, v]) => [v.nom, etat.ouvertures.filter(o => o.type === k).length]).filter(([, n]) => n).map(([a, n]) => [a, fr(n), a === "Fenêtre" && nbFen ? "Sans effet sur le sol ni les plinthes" : ""])]);
     if (etat.ecart > 5) { const e0 = etat.ecart / 2 + 3, kg = S * e0 * 1.6; s.push(["Reprise du support", [["Ragréage", `${fr(Math.ceil(kg))} kg`, `Épaisseur moyenne ${fr(e0, 1)} mm, ${fr(Math.ceil(kg / 25))} sacs de 25 kg`]]]); }
   }
   return s;
@@ -1386,6 +1403,7 @@ function etapesPose() {
     l.push(["Implanter la forme", `Reportez les cotes au sol avec un cordeau.${diag}`]);
     const eau = c.lots.filter(r => r.d.eau);
     if (c.lots.length) l.push(["Implanter les éléments", `Tracez au sol ${c.lots.map(r => r.d.nom.toLowerCase()).join(", ")}, puis contrôlez la position de chaque élément par rapport aux bords.`]);
+    if (etat.ouvertures.length) { const ouv = etat.ouvertures.map(o => ancrage(o)); l.push(["Caler sous les ouvertures", `Le dessus des lames arrive ${cm(Math.max(0.02, 0.03))} au moins sous le seuil de ${etat.ouvertures.map(o => OUVERTURES[o.type].nom.toLowerCase()).join(", ")}, pour que l’eau ne rentre pas. Gardez 1 cm de jeu entre la lame et le mur.`]); void ouv; }
     l.push(["Préparer le sol", `Nivelez et stabilisez le sol, puis posez ${fr(Math.ceil(c.surfaceUtile * 1.1))} m² de géotextile avec 10 cm de recouvrement.${eau.length ? " Gardez environ 1 cm par mètre de pente pour éloigner l’eau du bassin." : ""}`]);
     const hb = c.mondePlots.length ? [Math.min(...c.mondePlots.map(q => q.hp)), Math.max(...c.mondePlots.map(q => q.hp))] : [0, 0];
     l.push(["Régler les plots", `${fr(c.nbPlots)} plots, tous les 60 cm maximum le long des lambourdes. Hauteur de ${cm(hb[0])} à ${cm(hb[1])}${etat.pente ? ", voir la vue Structure pour chaque zone" : ""}. Contrôlez le niveau au laser ou à la règle.`]);
@@ -1479,7 +1497,7 @@ function afficherListes() {
 }
 function afficherAjouts() {
   const ex = ext();
-  $("ajout-ouvertures").innerHTML = Object.entries(OUVERTURES).map(([k, v]) => `<button type="button" data-o="${k}" aria-pressed="false">${v.nom}</button>`).join("");
+  $("ajout-ouvertures").innerHTML = ouverturesLieu().map(([k, v]) => `<button type="button" data-o="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-pieces").innerHTML = Object.entries(PIECES).map(([k, v]) => `<button type="button" data-n="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-zones").innerHTML = Object.entries(ZONES).map(([k, v]) => `<button type="button" data-z="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   const boutons = l => l.map(([k, v]) => `<button type="button" data-t="${k}">${v.nom}</button>`).join(""), liste = Object.entries(ELEMENTS).filter(([, v]) => v.lieu === etat.lieu);
@@ -1487,9 +1505,8 @@ function afficherAjouts() {
   const reel = !!(fond && fond.aerien);
   $("bloc-decor").hidden = !ex; $("bloc-reel").hidden = !reel; $("lire-pente").hidden = !reel || !ex;
   $("env-bat").setAttribute("aria-pressed", String(etat.envBat)); $("env-arbres").setAttribute("aria-pressed", String(etat.envArbres));
-  $("bloc-ouvertures").hidden = ex;
+  $("bloc-pieces").hidden = ex; $("aide-ouvertures").hidden = !ex; $("titre-ouvertures").textContent = ex ? "Ouvertures de la maison" : "Ouvertures";
   $("titre-elements").textContent = ex ? "Dans la terrasse" : "Escalier et éléments fixes";
-  $("titre-elements").style.marginTop = ex ? "0" : "";
   $("chapo-elements").textContent = ex ? "La terrasse et sa structure se découpent autour de chaque élément." : "Placez ce qui change la pose : ouvertures, couloir, escalier, meubles fixes.";
 }
 function afficherLegende() {
@@ -2057,14 +2074,30 @@ function construirePiece(c, m, ip, formes) {
     const X = [-70, 70], pos = [], uv = [];
     for (const [a, b] of [[0, 0], [0, 1], [1, 1], [1, 0]]) { const x = X[a], z = X[b]; pos.push(x, t.sol({ x: x + m.cx, y: z + m.cz }), z); uv.push(a * 60, b * 60); }
     T.pelouse.geometry.dispose(); const gs = new THREE.BufferGeometry(); gs.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gs.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); gs.setIndex([0, 1, 2, 0, 2, 3]); gs.computeVertexNormals(); T.pelouse.geometry = gs;
-    if (fond && fond.aerien) decorReel(m, t, groupe);
-    else {
-    const large = m.largeur + 10, z = m.zmin - 0.32, bl = Math.min(3.2, m.largeur * 0.6), base = etat.hauteur / 100 - 0.15;
-    const mur = new THREE.Mesh(new THREE.BoxGeometry(large, 9, 0.4), new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 })); mur.position.set(0, base - 1.5, z); mur.castShadow = mur.receiveShadow = true; groupe.add(mur);
-    const fen = new THREE.Mesh(new THREE.BoxGeometry(bl + 0.14, 2.25, 0.02), new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.6 })); fen.position.set(0, base + 1.14, z + 0.2); groupe.add(fen);
-    const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(0x24333C), roughness: 0.15, metalness: 0.5 })); baie.position.set(0, base + 1.12, z + 0.205); groupe.add(baie);
-    const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8 })); toit.position.set(0, base + 3.1, z + 0.25); toit.castShadow = true; groupe.add(toit);
-    if (etat.pente <= 2) for (const k of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(k * (m.largeur / 2 + 5.4), 0.5, z + 15); hg.castShadow = true; groupe.add(hg); }
+    const ouvs = etat.ouvertures.map(o => ({ o, a: ancrage(o), d: OUVERTURES[o.type] })), bordMaison = ouvs.length ? ouvs[0].a.i : -1;
+    const reel = !!(fond && fond.aerien);
+    if (reel) decorReel(m, t, groupe);
+    if (!reel || ouvs.length) {
+      const b = bordMaison >= 0 ? bords()[bordMaison] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) : 0;
+      const grp = new THREE.Group(); grp.position.set(mx, 0, mz); grp.rotation.y = -ang; groupe.add(grp);
+      const large = (b ? Math.max(b.len, m.largeur) : m.largeur) + (reel ? 0 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2, murM = new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 });
+      const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5;
+      if (!reel || !fond.bat.length) { const mur = new THREE.Mesh(new THREE.BoxGeometry(large, hautMur, ep), murM); mur.position.set(0, yMur, zc); mur.castShadow = mur.receiveShadow = true; grp.add(mur); const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8 })); toit.position.set(0, base + 3.1, zc + 0.35); toit.castShadow = true; grp.add(toit); }
+      if (!ouvs.length) {
+        const bl = Math.min(3.2, m.largeur * 0.6);
+        const fen = new THREE.Mesh(new THREE.BoxGeometry(bl + 0.14, 2.25, 0.02), new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.6 })); fen.position.set(0, base + 1.14, zc + ep / 2 + 0.005); grp.add(fen);
+        const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(0x24333C), roughness: 0.15, metalness: 0.5 })); baie.position.set(0, base + 1.12, zc + ep / 2 + 0.02); grp.add(baie);
+      }
+      const cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
+      for (const { a, d } of ouvs) {
+        const sx = (a.cx - m.cx - mx) * Math.cos(ang) + (a.cy - m.cz - mz) * Math.sin(ang), y0 = m.h3 + (d.sol || 0) + 0.03, zf = zc + ep / 2, nv = d.vantaux || 1;
+        const B = (w, h, p, x, y, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, p), mat); o.position.set(x, y, z); o.castShadow = true; grp.add(o); };
+        B(a.l + 0.12, d.h + 0.12, 0.05, sx, y0 + d.h / 2, zf + 0.01, cadreM);
+        if (d.pleine) B(a.l - 0.04, d.h - 0.04, 0.05, sx, y0 + d.h / 2, zf + 0.025, boisM);
+        else for (let k = 0; k < nv; k++) { const w = a.l / nv, x = sx - a.l / 2 + w * (k + 0.5), zk = zf + 0.03 + (d.battant || nv === 1 ? 0 : k * 0.035); B(w - 0.02, d.h - 0.02, 0.04, x, y0 + d.h / 2, zk, cadreM); B(w - 0.12, d.h - 0.12, 0.012, x, y0 + d.h / 2, zk + 0.016, vitreM); }
+        if (d.sol) B(a.l + 0.16, 0.05, 0.12, sx, y0 - 0.03, zf + 0.04, murM);
+      }
+      if (!reel && etat.pente <= 2) for (const k of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(k * (m.largeur / 2 + 5.4), 0.5, zc + 15); hg.castShadow = true; grp.add(hg); }
     }
     if (etat.spots) { const sm = new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 1 }); for (const q of pointsSpots()) { const o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16), sm); o.position.set(q.x - m.cx, m.h3 + 0.004, q.y - m.cz); groupe.add(o); } }
   } else {
