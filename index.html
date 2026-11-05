@@ -280,7 +280,7 @@ h2, h3, p { margin: 0; }
       <button type="button" id="refaire" aria-label="Rétablir" disabled><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M20 12H9a5 5 0 0 0-5 5"/></svg></button>
     </div>
     <div class="legende flottant" id="legende" hidden></div>
-    <div class="credit" id="credit" hidden>Vue aérienne : IGN</div>
+    <div class="credit" id="credit" hidden>Vue aérienne et bâtiments : IGN</div>
     <div class="bandeau flottant" id="bandeau" role="status" hidden></div>
     <div id="toast" role="status" hidden></div>
   </div>
@@ -354,6 +354,14 @@ h2, h3, p { margin: 0; }
       </div>
       <h3 id="titre-elements"></h3>
       <div class="ajouts" id="ajout-elements"></div>
+      <div id="bloc-decor">
+        <h3>Autour de la terrasse</h3>
+        <div class="ajouts" id="ajout-decor"></div>
+        <div class="cartes" id="bloc-reel" style="margin-top:8px" hidden>
+          <button class="bascule" id="env-bat" type="button" aria-pressed="true"><b>Bâtiments réels</b><small>Maisons voisines et hauteurs d’après l’IGN</small></button>
+          <button class="bascule" id="env-arbres" type="button" aria-pressed="true"><b>Arbres détectés</b><small>Repérés sur la photo aérienne, à titre indicatif</small></button>
+        </div>
+      </div>
       <div class="liste" id="liste-elements"></div>
       <p class="aide" id="aide-elements"></p>
     </section>
@@ -381,6 +389,7 @@ h2, h3, p { margin: 0; }
             <p class="aide">Les flèches indiquent le sens de la descente.</p>
           </div>
         </div>
+        <button class="lien" id="lire-pente" type="button" hidden>Lire la pente sur la carte IGN</button>
         <div class="infos" id="infos-terrain"></div>
         <h3>Marches</h3>
         <button class="btn-clair" id="ajout-marche" type="button" aria-pressed="false">Ajouter une marche</button>
@@ -528,6 +537,12 @@ const ELEMENTS = {
   arbre: { lieu: "exterieur", nom: "Arbre", l: 0.5, p: 0.5, rond: 1, jeu: 0.04, coul: "#6B8F4E" },
   regard: { lieu: "exterieur", nom: "Regard", l: 0.5, p: 0.5, coul: "#9A9A96" },
   pergola: { lieu: "exterieur", nom: "Poteau de pergola", l: 0.15, p: 0.15, h: 2.4, coul: "#5A4632" },
+  haie: { lieu: "exterieur", nom: "Haie", l: 6, p: 0.8, h: 1.8, decor: 1, coul: "#4F7A3A" },
+  cloture: { lieu: "exterieur", nom: "Clôture", l: 6, p: 0.06, h: 1.6, decor: 1, coul: "#6B6F6C" },
+  muret: { lieu: "exterieur", nom: "Muret", l: 4, p: 0.2, h: 0.8, decor: 1, coul: "#BDB8AE" },
+  abri: { lieu: "exterieur", nom: "Abri de jardin", l: 3, p: 2, h: 2.3, decor: 1, coul: "#9C7B57" },
+  massif: { lieu: "exterieur", nom: "Massif fleuri", l: 2.5, p: 1, h: 0.35, decor: 1, coul: "#7E9B55" },
+  allee: { lieu: "exterieur", nom: "Allée", l: 1.2, p: 5, h: 0.02, decor: 1, coul: "#C9C2B2" },
   escalier: { lieu: "interieur", nom: "Escalier", l: 0.9, p: 3, coul: "#D8D2C6" },
   poteau: { lieu: "interieur", nom: "Poteau", l: 0.3, p: 0.3, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
   poteaurond: { lieu: "interieur", nom: "Poteau rond", l: 0.3, p: 0.3, h: 2.5, rond: 1, plinthe: 1, coul: "#BDB8AE" },
@@ -546,7 +561,7 @@ const etat = {
   hauteur: 15, pente: 0, azimut: 90, marches: [],
   support: "chape", chauffage: false, humide: false, ecart: 0, ouvertures: [], elements: [],
   produit: "pin", dims: {}, angle: 0, motif: "aleatoire", depart: "fin", graine: 7, marge: 5,
-  cadre: false, habillage: false, spots: 0, plinthes: true
+  cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true
 };
 let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1;
 let cam = { z: 60, ox: 0, oy: 0 }, calepin = null, fond = null, mode = null, calibration = [];
@@ -654,6 +669,7 @@ function contactMur(o) {
   return tot;
 }
 function aimanter(o) {
+  if (ELEMENTS[o.type].decor) return;
   const tol = 12 / cam.z;
   for (const b of bords()) {
     const pts = contour(o), rs = pts.map(P => (P.x - b.A.x) * b.nx + (P.y - b.A.y) * b.ny), ss = pts.map(P => (P.x - b.A.x) * b.ux + (P.y - b.A.y) * b.uy), r = Math.max(...rs);
@@ -700,7 +716,7 @@ function calepiner() {
   const retrait = estExt ? (etat.cadre ? w + jeu : 0) : jeuMur;
   const polyPose = retrait ? decaler(etat.poly, retrait) : etat.poly;
   const loc = polyPose.map(versLocal), bb = boiteEnglobante(loc, "u", "v"), locT = etat.poly.map(versLocal), bbT = boiteEnglobante(locT, "u", "v");
-  const trousM = etat.elements.map(o => contour(o, margeEl(o, pas))), trous = trousM.map(m => m.map(versLocal)), contours = [loc, ...trous], contoursT = [locT, ...trous];
+  const trousM = etat.elements.filter(o => !ELEMENTS[o.type].decor).map(o => contour(o, margeEl(o, pas))), trous = trousM.map(m => m.map(versLocal)), contours = [loc, ...trous], contoursT = [locT, ...trous];
   const r = hasard(etat.graine * 131 + 3), rangs = [], module = Lm + jeu, mini = carrelage ? Lm / 3 : Math.min(0.3, Lm / 3);
   const e = estExt ? (p.entraxe || 0.5) : 0, mL = SECTION.l, grille0 = bbT.umin + mL / 2, k = estExt ? Math.max(2, Math.floor(Lm / e + EPS)) : 0;
   const baseU = carrelage ? origine(bb.umin, bb.umax, module, Lm, etat.depart) : bb.umin, phi = origine(bb.vmin, bb.vmax, pas, w, etat.depart);
@@ -805,7 +821,7 @@ function calepiner() {
   const brut = carrelage ? longueurs.length : emballer([...longueurs, ...lgMarches], Lm);
   const nbPieces = Math.ceil(Math.max(brut, (surfaceNette + marches.reduce((s, m) => s + m.nb * m.g * m.l, 0)) / unite * marge));
   const t = terrain(), hT = etat.hauteur / 100, hs = etat.poly.map(q => hT - t.sol(q));
-  const lots = etat.elements.map(o => {
+  const lots = etat.elements.filter(o => !ELEMENTS[o.type].decor).map(o => {
     const el = ELEMENTS[o.type], x = { o, d: el };
     if (o.margelle) { const c0 = contour(o, o.horssol ? 0.04 + w / 2 : w / 2), lg = c0.map((q, i) => { const s = c0[(i + 1) % c0.length]; return Math.hypot(s.x - q.x, s.y - q.y); }); x.mlMargelle = lg.reduce((s, l) => s + l, 0); x.nbMargelle = el.rond ? Math.ceil(x.mlMargelle / Lm * 1.15) : emballer(lg, Lm); }
     if (o.horssol) { x.perimetre = perimetreDe(contour(o, 0.04)); x.hv = Math.max(0, o.hb - hT); x.rangs = Math.ceil(x.hv / pas); x.nbHabillage = Math.ceil(x.perimetre * x.rangs / Lm * 1.1); }
@@ -871,7 +887,7 @@ const ecran = p => ({ x: cam.ox + p.x * cam.z, y: cam.oy + p.y * cam.z });
 const monde = (x, y) => ({ x: (x - cam.ox) / cam.z, y: (y - cam.oy) / cam.z });
 const etroit = () => matchMedia("(max-width: 900px)").matches;
 function cadrer() {
-  const pts = [...etat.poly, ...etat.pieces.flatMap((p, i) => i === etat.active ? [] : p.poly), ...(ext() ? etat.marches.map(marcheInfo).map(a => ({ x: a.cx + a.nx * a.course, y: a.cy + a.ny * a.course })) : [])];
+  const pts = [...etat.poly, ...etat.pieces.flatMap((p, i) => i === etat.active ? [] : p.poly), ...etat.elements.filter(o => ELEMENTS[o.type].decor).flatMap(o => contour(o)), ...(ext() ? etat.marches.map(marcheInfo).map(a => ({ x: a.cx + a.nx * a.course, y: a.cy + a.ny * a.course })) : [])];
   const bb = boiteEnglobante(pts), m = etroit() ? { g: 76, d: 76, h: 92, b: 96 } : { g: 90, d: 90, h: fond || !ext() ? 96 : 150, b: 90 };
   const w = Math.max(40, LP - m.g - m.d), h = Math.max(40, HP - m.h - m.b);
   cam.z = Math.min(w / (bb.umax - bb.umin), h / (bb.vmax - bb.vmin), fond && fond.aerien ? 34 : 110);
@@ -1455,7 +1471,11 @@ function afficherAjouts() {
   $("ajout-ouvertures").innerHTML = Object.entries(OUVERTURES).map(([k, v]) => `<button type="button" data-o="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-pieces").innerHTML = Object.entries(PIECES).map(([k, v]) => `<button type="button" data-n="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-zones").innerHTML = Object.entries(ZONES).map(([k, v]) => `<button type="button" data-z="${k}" aria-pressed="false">${v.nom}</button>`).join("");
-  $("ajout-elements").innerHTML = Object.entries(ELEMENTS).filter(([, v]) => v.lieu === etat.lieu).map(([k, v]) => `<button type="button" data-t="${k}">${v.nom}</button>`).join("");
+  const boutons = l => l.map(([k, v]) => `<button type="button" data-t="${k}">${v.nom}</button>`).join(""), liste = Object.entries(ELEMENTS).filter(([, v]) => v.lieu === etat.lieu);
+  $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => !v.decor)); $("ajout-decor").innerHTML = boutons(liste.filter(([, v]) => v.decor));
+  const reel = !!(fond && fond.aerien);
+  $("bloc-decor").hidden = !ex; $("bloc-reel").hidden = !reel; $("lire-pente").hidden = !reel || !ex;
+  $("env-bat").setAttribute("aria-pressed", String(etat.envBat)); $("env-arbres").setAttribute("aria-pressed", String(etat.envArbres));
   $("bloc-ouvertures").hidden = ex;
   $("titre-elements").textContent = ex ? "Dans la terrasse" : "Escalier et éléments fixes";
   $("titre-elements").style.marginTop = ex ? "0" : "";
@@ -1540,7 +1560,7 @@ function allerEtape(i) {
 }
 function changerLieu(l) {
   if (l === etat.lieu) return;
-  memoriser();
+  memoriser(); etat.site = null;
   const ex = l === "exterieur", p = CATALOGUE.find(q => q.id === (ex ? "pin" : "contrecolle"));
   Object.assign(etat, { lieu: l, produit: p.id, motif: MOTIFS[p.fam][0][0], marge: ex ? 5 : 10, depart: ex ? "fin" : "debut", angle: 0, forme: "rectangle", poly: copieForme("rectangle"), marches: [], ouvertures: [], elements: [], id: 1, nom: "Pièce 1", active: 0 });
   etat.pieces = [copie(extraire(etat))]; memo.clear();
@@ -1580,11 +1600,12 @@ $("suppr-piece").addEventListener("click", () => {
   const i = etat.active, nom = etat.nom; etat.pieces.splice(i, 1); etat.active = 0; Object.assign(etat, copie(etat.pieces[0])); memo.clear(); choix = -1; synchroniser(); cadrer(); toast(`${nom} supprimée.`);
 });
 $("ajout-zones").addEventListener("click", e => { const b = e.target.closest("[data-z]"); if (b) choisirOutil(typeOutil === b.dataset.z ? "ajuster" : "zone", typeOutil === b.dataset.z ? "" : b.dataset.z); });
-$("ajout-elements").addEventListener("click", e => {
+function ajouterElement(e) {
   const b = e.target.closest("[data-t]"); if (!b) return; memoriser();
   const t = b.dataset.t, d = ELEMENTS[t], bb = boiteEnglobante(etat.poly), o = { type: t, x: arrondi((bb.umin + bb.umax) / 2), y: arrondi((bb.vmin + bb.vmax) / 2), l: d.l, p: d.p, rot: 0 };
   if (t === "escalier") { o.ht = 2.7; o.revetir = false; o.p = infoEscalier(o).course; }
   if (d.margelle) o.margelle = true;
+  if (d.decor) { o.y = arrondi(bb.vmax + 1.5 + o.p / 2); }
   if (t === "piscine" || t === "piscineronde") { o.horssol = false; o.hb = 1.2; }
   if ((t === "piscine" || t === "piscineronde") && etat.forme === "rectangle" && (bb.umax - bb.umin < o.l + 3 || bb.vmax - bb.vmin < o.p + 3)) {
     const L = Math.max(bb.umax - bb.umin, o.l + 3), P = Math.max(bb.vmax - bb.vmin, o.p + 3);
@@ -1594,7 +1615,9 @@ $("ajout-elements").addEventListener("click", e => {
   etat.elements.push(o); choix = etat.elements.length - 1;
   if (vue !== "plan") changerVue("plan");
   synchroniser(); cadrer();
-});
+}
+$("ajout-elements").addEventListener("click", ajouterElement); $("ajout-decor").addEventListener("click", ajouterElement);
+for (const [id, k] of [["env-bat", "envBat"], ["env-arbres", "envArbres"]]) $(id).addEventListener("click", () => { etat[k] = !etat[k]; $(id).setAttribute("aria-pressed", String(etat[k])); sceneModifiee(); });
 $("liste-elements").addEventListener("click", e => {
   const c = e.target.closest("[data-i]"); if (!c) return;
   const i = +c.dataset.i, o = etat.elements[i], b = e.target.closest("button");
@@ -1652,12 +1675,12 @@ $("enregistrer").addEventListener("click", () => { try { localStorage.setItem(CL
 const chargerScript = (src, g) => new Promise((ok, ko) => { if (g && window[g]) return ok(); const s = document.createElement("script"); s.src = src; s.onload = () => ok(); s.onerror = () => ko(new Error(src)); document.head.appendChild(s); });
 function bandeau(h) { const b = $("bandeau"); b.innerHTML = h; b.hidden = !h; }
 function choixFond(k) { document.querySelectorAll("[data-fond]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fond === k))); $("bloc-adresse").hidden = k !== "adresse"; }
-function fondActif() { $("reglages-fond").hidden = !fond; $("credit").hidden = !(fond && fond.aerien) || vue === "3d"; $("fond-opacite").value = fond ? fond.opacite * 100 : 100; $("o-opacite").textContent = `${$("fond-opacite").value} %`; $("fond-angle").value = fond ? fond.angle : 0; $("o-angle").textContent = `${$("fond-angle").value}°`; }
+function fondActif() { $("reglages-fond").hidden = !fond; $("credit").hidden = !(fond && fond.aerien); $("fond-opacite").value = fond ? fond.opacite * 100 : 100; $("o-opacite").textContent = `${$("fond-opacite").value} %`; $("fond-angle").value = fond ? fond.angle : 0; $("o-angle").textContent = `${$("fond-angle").value}°`; }
 document.querySelectorAll("[data-fond]").forEach(b => b.addEventListener("click", () => {
   const k = b.dataset.fond; choixFond(k);
   if (k === "adresse") $("adresse").focus();
   if (k === "plan") $("fichier").click();
-  if (k === "exemple") { fond = null; mode = null; calibration = []; bandeau(""); fondActif(); cadrer(); }
+  if (k === "exemple") { fond = null; etat.site = null; afficherAjouts(); mode = null; calibration = []; bandeau(""); fondActif(); cadrer(); }
 }));
 $("form-adresse").addEventListener("submit", async e => {
   e.preventDefault();
@@ -1670,20 +1693,70 @@ $("form-adresse").addEventListener("submit", async e => {
     for (const f of d.features) { const b = document.createElement("button"); b.type = "button"; b.textContent = f.properties.label; b.addEventListener("click", () => { l.textContent = ""; chargerAerienne(f.geometry.coordinates[0], f.geometry.coordinates[1]); }); l.appendChild(b); }
   } catch (err) { l.textContent = "La vue aérienne fonctionne une fois le site en ligne. Utilisez un plan ou le jardin d’exemple ici."; }
 });
-function chargerAerienne(lon, lat) {
+const mondeVersFond = P => { const f = fond, a = (f.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = f.x + f.l * f.m / 2, cy = f.y + f.h * f.m / 2, dx = P.x - cx, dy = P.y - cy; return { px: (dx * ca + dy * sa) / f.m + f.l / 2, py: (-dx * sa + dy * ca) / f.m + f.h / 2 }; };
+function pointFond(px, py) { const f = fond, a = (f.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), lx = (px - f.l / 2) * f.m, ly = (py - f.h / 2) * f.m; return { x: f.x + f.l * f.m / 2 + lx * ca - ly * sa, y: f.y + f.h * f.m / 2 + lx * sa + ly * ca }; }
+function fondVersGeo(px, py) { const g = fond.geo, xf = px / 256 + g.cx - g.R, yf = py / 256 + g.cy - g.R; return { lon: xf / g.n * 360 - 180, lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * yf / g.n))) * 180 / Math.PI }; }
+function geoVersFond(lon, lat) { const g = fond.geo, ph = lat * Math.PI / 180; return [((lon + 180) / 360 * g.n - g.cx + g.R) * 256, ((1 - Math.log(Math.tan(ph) + 1 / Math.cos(ph)) / Math.PI) / 2 * g.n - g.cy + g.R) * 256]; }
+async function chargerEnvironnement() {
+  const f = fond, g = f.geo, dLat = 0.0009, dLon = dLat / Math.cos(g.lat * Math.PI / 180);
+  try {
+    const d = f.image.getContext("2d").getImageData(0, 0, f.l, f.h).data, couleur = (x, y) => { const i = (Math.round(y) * f.l + Math.round(x)) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+    const u = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=BDTOPO_V3:batiment&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&COUNT=300&BBOX=${g.lat - dLat},${g.lon - dLon},${g.lat + dLat},${g.lon + dLon},urn:ogc:def:crs:EPSG::4326`;
+    let j = { features: [] }; try { j = await (await fetch(u)).json(); } catch (e) { /* bâtiments indisponibles */ }
+    if (fond !== f) return;
+    f.bat = (j.features || []).flatMap(b => (b.geometry.type === "Polygon" ? [b.geometry.coordinates] : b.geometry.coordinates).map(pl => {
+      const q = b.properties, px = pl[0].slice(0, -1).map(c => geoVersFond(c[0], c[1])), mi = q.altitude_minimale_toit, ma = q.altitude_maximale_toit, poly = px.map(([x, y]) => ({ x, y })), bx = boiteEnglobante(poly); let n = 0; const s = [0, 0, 0];
+      for (let k = 0; k < 40; k++) { const x = bx.umin + (k * 0.618 % 1) * (bx.umax - bx.umin), y = bx.vmin + (k * 0.381 % 1) * (bx.vmax - bx.vmin); if (x > 0 && y > 0 && x < f.l && y < f.h && dansPoly({ x, y }, poly)) { const v = couleur(x, y); s[0] += v[0]; s[1] += v[1]; s[2] += v[2]; n++; } }
+      return { px, poly, h: clamp(q.hauteur || (q.nombre_d_etages ? q.nombre_d_etages * 3 : 6), 2.5, 45), toit: mi != null && ma != null ? clamp(ma - mi, 0, 6) : 0, coul: n ? s.map(v => Math.round(v / n)) : [150, 110, 90] };
+    }));
+    const pas = 6, port = 400, cx0 = f.l / 2, cy0 = f.h / 2, cases = new Map(), cle = (i, j2) => `${i},${j2}`;
+    for (let i = -Math.round(port / pas); i <= port / pas; i++) for (let j2 = -Math.round(port / pas); j2 <= port / pas; j2++) {
+      const x = cx0 + i * pas, y = cy0 + j2 * pas; if (x < 3 || y < 3 || x > f.l - 4 || y > f.h - 4) continue;
+      const s = [0, 0, 0]; for (let a = -2; a <= 2; a += 2) for (let b = -2; b <= 2; b += 2) { const v = couleur(x + a, y + b); s[0] += v[0]; s[1] += v[1]; s[2] += v[2]; }
+      const [R0, G0, B0] = s.map(v => v / 9), lum = (R0 + G0 + B0) / 3;
+      if (G0 > R0 * 1.05 && G0 > B0 * 1.1 && lum < 105 && lum > 25 && !f.bat.some(b => dansPoly({ x, y }, b.poly))) cases.set(cle(i, j2), { i, j: j2, x, y, c: [R0, G0, B0] });
+    }
+    const vus = new Set(), arbres = [];
+    for (const [k, c0] of cases) {
+      if (vus.has(k)) continue;
+      const pile = [c0], groupe = []; vus.add(k);
+      while (pile.length) { const c = pile.pop(); groupe.push(c); for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k2 = cle(c.i + a, c.j + b); if (cases.has(k2) && !vus.has(k2)) { vus.add(k2); pile.push(cases.get(k2)); } } }
+      if (groupe.length < 5) continue;
+      const gardes = []; for (const c of groupe) if (gardes.every(q => Math.hypot(q.i - c.i, q.j - c.j) >= 3.2)) gardes.push(c);
+      for (const c of gardes) if (arbres.length < 220) arbres.push({ px: c.x, py: c.y, r: 1.7 + ((c.i * 7 + c.j * 13) % 10) / 10 * 1.5, c: c.c });
+    }
+    f.arbres = arbres; sceneModifiee();
+  } catch (e) { /* environnement indisponible */ }
+}
+async function lirePente() {
+  if (!fond || !fond.geo) return;
+  const bb = boiteEnglobante(etat.poly), cx = (bb.umin + bb.umax) / 2, cy = (bb.vmin + bb.vmax) / 2, m = 4, pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => ({ a, b, P: { x: cx + a * Math.max(m, (bb.umax - bb.umin) / 2), y: cy + b * Math.max(m, (bb.vmax - bb.vmin) / 2) } }));
+  const geo = pts.map(q => { const v = mondeVersFond(q.P); return fondVersGeo(v.px, v.py); });
+  try {
+    const u = `https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${geo.map(g => g.lon.toFixed(7)).join("|")}&lat=${geo.map(g => g.lat.toFixed(7)).join("|")}&resource=ign_rge_alti_wld&zonly=true`, z = (await (await fetch(u)).json()).elevations;
+    if (!z || z.length !== 4 || z.some(v => v < -1000)) throw new Error("alti");
+    const lx = pts[1].P.x - pts[0].P.x, ly = pts[3].P.y - pts[0].P.y, gx = (z[1] + z[2] - z[0] - z[3]) / 2 / lx, gy = (z[2] + z[3] - z[0] - z[1]) / 2 / ly, pente = Math.hypot(gx, gy) * 100;
+    memoriser(); etat.pente = clamp(Math.round(pente * 2) / 2, 0, 20);
+    if (etat.pente > 0) etat.azimut = mod(Math.round(Math.atan2(-gy, -gx) * 180 / Math.PI / 45) * 45, 360);
+    synchroniser(); toast(etat.pente ? `Pente IGN : ${fr(etat.pente, etat.pente % 1 ? 1 : 0)} %, à vérifier sur place.` : "Terrain plat d’après l’IGN.");
+  } catch (e) { toast("La pente n’a pas pu être lue ici."); }
+}
+function chargerAerienne(lon, lat, reprise) {
   const z = 19, n = 2 ** z, xf = (lon + 180) / 360 * n, phi = lat * Math.PI / 180, yf = (1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2 * n, cx = Math.floor(xf), cy = Math.floor(yf), R = 3, cote = (2 * R + 1) * 256;
   const c = document.createElement("canvas"); c.width = c.height = cote; const g = c.getContext("2d"), attentes = [];
   bandeau("Chargement de la vue du ciel…");
   for (let dx = -R; dx <= R; dx++) for (let dy = -R; dy <= R; dy++) attentes.push(new Promise(ok => {
-    const im = new Image();
+    const im = new Image(); im.crossOrigin = "anonymous";
     im.onload = () => { g.drawImage(im, (dx + R) * 256, (dy + R) * 256); ok(true); }; im.onerror = () => ok(false);
     im.src = `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX=${z}&TILEROW=${cy + dy}&TILECOL=${cx + dx}`;
   }));
   Promise.all(attentes).then(r => {
     if (!r.some(Boolean)) { bandeau("La vue aérienne fonctionne une fois le site en ligne."); setTimeout(() => bandeau(""), 3500); return; }
     const m = 156543.03392 * Math.cos(phi) / n, bb = boiteEnglobante(etat.poly), px = (xf - cx + R) * 256, py = (yf - cy + R) * 256;
-    fond = { image: c, l: cote, h: cote, m, x: (bb.umin + bb.umax) / 2 - px * m, y: (bb.vmin + bb.vmax) / 2 - py * m, opacite: 1, angle: 0, aerien: true };
-    bandeau(""); fondActif(); cadrer(); toast("Tournez l’image pour aligner votre maison.");
+    fond = { image: c, l: cote, h: cote, m, x: reprise ? reprise.x : (bb.umin + bb.umax) / 2 - px * m, y: reprise ? reprise.y : (bb.vmin + bb.vmax) / 2 - py * m, opacite: 1, angle: reprise ? reprise.angle : 0, aerien: true, geo: { lon, lat, n, cx, cy, R }, bat: [], arbres: [] };
+    etat.site = { lon, lat, x: fond.x, y: fond.y, angle: fond.angle };
+    bandeau(""); fondActif(); afficherAjouts(); cadrer(); if (!reprise) toast("Tournez l’image pour aligner votre maison.");
+    chargerEnvironnement();
   });
 }
 $("fichier").addEventListener("change", async e => {
@@ -1717,8 +1790,9 @@ function demanderDistance() {
   $("dist-ok").addEventListener("click", ok); champ.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
 }
 $("fond-opacite").addEventListener("input", e => { if (fond) { fond.opacite = e.target.value / 100; $("o-opacite").textContent = `${e.target.value} %`; planifier(); } });
-$("fond-angle").addEventListener("input", e => { if (fond) { fond.angle = +e.target.value; $("o-angle").textContent = `${e.target.value}°`; planifier(); } });
-$("fond-retirer").addEventListener("click", () => { fond = null; mode = null; calibration = []; bandeau(""); choixFond("exemple"); fondActif(); cadrer(); });
+$("fond-angle").addEventListener("input", e => { if (fond) { fond.angle = +e.target.value; if (etat.site) etat.site.angle = fond.angle; $("o-angle").textContent = `${e.target.value}°`; planifier(); sceneModifiee(); } });
+$("lire-pente").addEventListener("click", lirePente);
+$("fond-retirer").addEventListener("click", () => { fond = null; etat.site = null; afficherAjouts(); mode = null; calibration = []; bandeau(""); choixFond("exemple"); fondActif(); cadrer(); });
 
 /* Volumes */
 const faceM = (g, q, n, uv) => { const b = g.pos.length / 3; for (const v of q) g.pos.push(...v); for (let i = 0; i < 4; i++) g.nor.push(...n); g.uv.push(...uv); g.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); };
@@ -1780,7 +1854,7 @@ async function changerVue(v) {
   const t = v === "3d";
   $("vue3d").hidden = !t; cvs.hidden = t; calque.style.display = t ? "none" : "";
   $("z-moins").hidden = $("z-plus").hidden = $("z-cadre").hidden = t;
-  $("credit").hidden = t || !(fond && fond.aerien);
+  $("credit").hidden = !(fond && fond.aerien);
   afficherLegende();
   if (t) { try { await chargerScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "THREE"); initialiser3D(); sceneModifiee(); } catch (e) { panneauErreur3D(); } }
   else planifier();
@@ -1820,7 +1894,41 @@ function initialiser3D() {
 }
 function sceneModifiee() { if (T) { sale = true; rendu3D(); } }
 const geo = g => { const b = new THREE.BufferGeometry(); b.setAttribute("position", new THREE.Float32BufferAttribute(g.pos, 3)); b.setAttribute("normal", new THREE.Float32BufferAttribute(g.nor, 3)); b.setAttribute("uv", new THREE.Float32BufferAttribute(g.uv, 2)); b.setIndex(g.idx); return b; };
-function vider(gr) { while (gr.children.length) { const o = gr.children[0]; gr.remove(o); o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) x.material.dispose(); }); } }
+function vider(gr) { while (gr.children.length) { const o = gr.children[0]; gr.remove(o); o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) (Array.isArray(x.material) ? x.material : [x.material]).forEach(q => q.dispose()); }); } }
+function decorReel(m, t, groupe) {
+  const f = fond;
+  if (!f.texLoin) {
+    const fabrique = (cv) => { const tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding; tx.anisotropy = 8; return tx; };
+    const portee = Math.round(64 / f.m), x0 = f.l / 2 - portee, y0 = f.h / 2 - portee, c = document.createElement("canvas"); c.width = c.height = 2048;
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(f.image, x0, y0, portee * 2, portee * 2, 0, 0, 2048, 2048);
+    const b = document.createElement("canvas"); b.width = b.height = 256; const gb = b.getContext("2d"), ra = hasard(5), im = gb.createImageData(256, 256); for (let i = 0; i < im.data.length; i += 4) { const v = 96 + ra() * 64; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } gb.putImageData(im, 0, 0);
+    g.globalCompositeOperation = "overlay"; g.globalAlpha = 0.55; g.fillStyle = g.createPattern(b, "repeat"); g.fillRect(0, 0, 2048, 2048);
+    f.texPres = fabrique(c); f.texLoin = fabrique(f.image); f.prox = [x0, y0, x0 + portee * 2, y0 + portee * 2];
+  }
+  const P = (px, py, dy) => { const q = pointFond(px, py); return [q.x - m.cx, t.sol(q) + dy, q.y - m.cz]; };
+  const plan = (tx, x0, y0, x1, y1, dy) => { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute([...P(x0, y1, dy), ...P(x1, y1, dy), ...P(x1, y0, dy), ...P(x0, y0, dy)], 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]); g.computeVertexNormals(); const me = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); me.receiveShadow = true; groupe.add(me); };
+  plan(f.texLoin, 0, 0, f.l, f.h, -0.06); plan(f.texPres, ...f.prox, -0.03);
+  const mur = new THREE.MeshStandardMaterial({ color: teinte(0xE4DED2), roughness: 0.95 });
+  if (etat.envBat) for (const b of f.bat) {
+    const pts = b.px.map(([x, y]) => pointFond(x, y)), base = Math.min(...pts.map(q => t.sol(q))), forme = new THREE.Shape(); pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) forme.lineTo(x, y); else forme.moveTo(x, y); });
+    const gm = new THREE.ExtrudeGeometry(forme, { depth: b.h + 0.5, bevelEnabled: false }); gm.rotateX(-Math.PI / 2);
+    const toit = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${b.coul.join(",")})`).convertSRGBToLinear(), roughness: 0.85, side: THREE.DoubleSide });
+    const me = new THREE.Mesh(gm, [toit, mur]); me.position.y = base - 0.5; me.castShadow = me.receiveShadow = true; groupe.add(me);
+    if (b.toit > 0.4) {
+      const bx = boiteEnglobante(pts), ins = Math.min(b.toit * 1.3, Math.min(bx.umax - bx.umin, bx.vmax - bx.vmin) * 0.42), inn = decaler(pts, ins), y0 = base + b.h, y1 = y0 + b.toit, s = [];
+      pts.forEach((q, i) => { const j = (i + 1) % pts.length, A = [q.x - m.cx, y0, q.y - m.cz], B = [pts[j].x - m.cx, y0, pts[j].y - m.cz], C = [inn[j].x - m.cx, y1, inn[j].y - m.cz], D = [inn[i].x - m.cx, y1, inn[i].y - m.cz]; s.push(...A, ...B, ...C, ...A, ...C, ...D); });
+      const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(s, 3)); g2.computeVertexNormals(); const pan = new THREE.Mesh(g2, toit.clone()); pan.castShadow = true; groupe.add(pan);
+      const f2 = new THREE.Shape(); inn.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) f2.lineTo(x, y); else f2.moveTo(x, y); });
+      const cap = new THREE.Mesh(new THREE.ShapeGeometry(f2), toit.clone()); cap.rotation.x = -Math.PI / 2; cap.position.y = y1; groupe.add(cap);
+    }
+  }
+  const liste = etat.envArbres ? f.arbres.map(a => ({ a, q: pointFond(a.px, a.py) })).filter(({ q }) => !dansPoly(q, etat.poly) && !etat.elements.some(o => ELEMENTS[o.type].eau && dansPoly(q, contour(o, 1)))) : [];
+  if (liste.length) {
+    const inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), liste.length), mat = new THREE.Matrix4(), col = new THREE.Color();
+    liste.forEach(({ a, q }, i) => { const h = 1.25; mat.makeScale(a.r, a.r * h, a.r); mat.setPosition(q.x - m.cx, t.sol(q) + a.r * h * 0.92, q.y - m.cz); inst.setMatrixAt(i, mat); col.setRGB(a.c[0] / 255 * 1.5, a.c[1] / 255 * 1.5, a.c[2] / 255 * 1.5).convertSRGBToLinear(); inst.setColorAt(i, col); });
+    inst.castShadow = true; groupe.add(inst);
+  }
+}
 function objetElement(o, m) {
   const d = ELEMENTS[o.type], g = new THREE.Group(), M = (c, r = 0.8) => new THREE.MeshStandardMaterial({ color: teinte(c), roughness: r });
   const B = (w, h, p, x, y, z, mat) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, p), mat); b.position.set(x, y, z); b.castShadow = b.receiveShadow = true; g.add(b); return b; };
@@ -1838,21 +1946,23 @@ function objetElement(o, m) {
   } else if (d.rond) { C(o.l / 2, o.l / 2, d.h, d.h / 2, M(d.coul)); }
   else {
     B(o.l, d.h, o.p, 0, d.h / 2, 0, M(d.coul));
+    if (o.type === "abri") { const t = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(o.l, o.p) / 2 * 1.08, 0.9, 4), M(0x4A4640)); t.rotation.y = Math.PI / 4; t.scale.set(o.l / Math.hypot(o.l, o.p) * 1.42, 1, o.p / Math.hypot(o.l, o.p) * 1.42); t.position.y = d.h + 0.45; t.castShadow = true; g.add(t); }
     if (o.type === "baignoire") B(o.l - 0.16, 0.02, o.p - 0.16, 0, d.h + 0.005, 0, M(0xBFDDE6, 0.2));
     if (o.type === "ilot" || o.type === "cuisine" || o.type === "vasque") B(o.l + 0.02, 0.04, o.p + 0.02, 0, d.h + 0.02, 0, M(0xEDEAE3, 0.35));
   }
-  g.position.set(o.x - m.cx, m.h3, o.y - m.cz); g.rotation.y = -o.rot * Math.PI / 180;
+  g.position.set(o.x - m.cx, dansPoly(o, etat.poly) ? m.h3 : terrain().sol(o), o.y - m.cz); g.rotation.y = -o.rot * Math.PI / 180;
   return g;
 }
 function reconstruire3D() {
   const ex = ext(), formes = etat.pieces.map((_, i) => polyDe(i)), bG = boiteEnglobante(formes.flat()), centre = { x: (bG.umin + bG.umax) / 2, z: (bG.vmin + bG.vmax) / 2 };
   vider(T.groupe);
-  T.pelouse.visible = ex; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null;
+  const reel = !!(ex && fond && fond.aerien);
+  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null;
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
   const cle = `${etat.lieu}|${Math.round(taille * 2)}`;
   if (cle !== T.cle) { T.cle = cle; T.rayon = Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5) * Math.max(1, 1.35 / T.camera.aspect); T.phi = ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
-  const d = T.sol.shadow.camera, e = taille + 8; d.left = -e; d.right = e; d.top = e; d.bottom = -e; d.near = 0.5; d.far = 50; d.updateProjectionMatrix();
+  const d = T.sol.shadow.camera, e = Math.max(taille + 8, reel ? 34 : 0); d.left = -e; d.right = e; d.top = e; d.bottom = -e; d.near = 0.5; d.far = 50; d.updateProjectionMatrix();
 }
 function construirePiece(c, m, ip, formes) {
   const { groupe } = T, p = c.p, ex = c.estExt, t = terrain();
@@ -1867,12 +1977,15 @@ function construirePiece(c, m, ip, formes) {
     const X = [-70, 70], pos = [], uv = [];
     for (const [a, b] of [[0, 0], [0, 1], [1, 1], [1, 0]]) { const x = X[a], z = X[b]; pos.push(x, t.sol({ x: x + m.cx, y: z + m.cz }), z); uv.push(a * 60, b * 60); }
     T.pelouse.geometry.dispose(); const gs = new THREE.BufferGeometry(); gs.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gs.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); gs.setIndex([0, 1, 2, 0, 2, 3]); gs.computeVertexNormals(); T.pelouse.geometry = gs;
+    if (fond && fond.aerien) decorReel(m, t, groupe);
+    else {
     const large = m.largeur + 10, z = m.zmin - 0.32, bl = Math.min(3.2, m.largeur * 0.6), base = etat.hauteur / 100 - 0.15;
     const mur = new THREE.Mesh(new THREE.BoxGeometry(large, 9, 0.4), new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 })); mur.position.set(0, base - 1.5, z); mur.castShadow = mur.receiveShadow = true; groupe.add(mur);
     const fen = new THREE.Mesh(new THREE.BoxGeometry(bl + 0.14, 2.25, 0.02), new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.6 })); fen.position.set(0, base + 1.14, z + 0.2); groupe.add(fen);
     const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(0x24333C), roughness: 0.15, metalness: 0.5 })); baie.position.set(0, base + 1.12, z + 0.205); groupe.add(baie);
     const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8 })); toit.position.set(0, base + 3.1, z + 0.25); toit.castShadow = true; groupe.add(toit);
     if (etat.pente <= 2) for (const k of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(k * (m.largeur / 2 + 5.4), 0.5, z + 15); hg.castShadow = true; groupe.add(hg); }
+    }
     if (etat.spots) { const sm = new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 1 }); for (const q of pointsSpots()) { const o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16), sm); o.position.set(q.x - m.cx, m.h3 + 0.004, q.y - m.cz); groupe.add(o); } }
   } else {
     const contourDalle = pts => { const f = new THREE.Shape(); pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) f.lineTo(x, y); else f.moveTo(x, y); }); return f; }, forme = contourDalle(etat.poly);
@@ -1955,6 +2068,7 @@ new ResizeObserver(() => { redimensionner(); if (T && vue === "3d") T.resize(); 
 try { const s = localStorage.getItem(CLE); if (s) { Object.assign(etat, JSON.parse(s)); setTimeout(() => toast("Votre projet enregistré est repris."), 400); } } catch (e) { /* stockage indisponible */ }
 if (!etat.pieces.length) etat.pieces = [copie(extraire(etat))];
 redimensionner(); synchroniser(); allerEtape(0); fondActif(); cadrer();
+if (etat.site) { const s = etat.site; choixFond("adresse"); chargerAerienne(s.lon, s.lat, s); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(planifier);
 })();
 </script>
