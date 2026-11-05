@@ -657,7 +657,7 @@ const ELEMENTS = {
   fauteuil: { lieu: "exterieur", nom: "Fauteuil", l: 0.8, p: 0.8, h: 0.75, meuble: 1, coul: "#D9D2C4" },
   bain: { lieu: "exterieur", nom: "Bain de soleil", l: 0.75, p: 1.95, h: 0.35, meuble: 1, coul: "#D9D2C4" },
   banc: { lieu: "exterieur", nom: "Banc", l: 1.6, p: 0.45, h: 0.45, meuble: 1, coul: "#B5916A" },
-  parasol: { lieu: "exterieur", nom: "Parasol", l: 3, p: 3, h: 2.5, meuble: 1, rond: 1, coul: "#E6DCC7" },
+  parasol: { lieu: "exterieur", nom: "Parasol", l: 3, p: 3, h: 2.5, meuble: 1, rond: 1, couvre: "mat", coul: "#E6DCC7" },
   barbecue: { lieu: "exterieur", nom: "Barbecue", l: 1.3, p: 0.65, h: 0.95, meuble: 1, coul: "#1E1F20" },
   plancha: { lieu: "exterieur", nom: "Plancha", l: 0.9, p: 0.55, h: 0.9, meuble: 1, coul: "#4A4D50" },
   cuisineext: { lieu: "exterieur", nom: "Cuisine d’été", l: 2.4, p: 0.65, h: 0.9, meuble: 1, coul: "#8A8D90" },
@@ -667,8 +667,8 @@ const ELEMENTS = {
   spaposable: { lieu: "exterieur", nom: "Spa posé", l: 2.1, p: 2.1, h: 0.9, meuble: 1, coul: "#54493F" },
   hamac: { lieu: "exterieur", nom: "Hamac sur pied", l: 3, p: 1.2, h: 0.9, meuble: 1, coul: "#C9A66B" },
   balancelle: { lieu: "exterieur", nom: "Balancelle", l: 1.9, p: 1.3, h: 1.8, meuble: 1, coul: "#3A3D3F" },
-  pergolabox: { lieu: "exterieur", nom: "Pergola", l: 3.5, p: 3, h: 2.5, meuble: 1, coul: "#5A4632" },
-  voile: { lieu: "exterieur", nom: "Voile d’ombrage", l: 3.6, p: 3.6, h: 2.6, meuble: 1, coul: "#E9E3D5" },
+  pergolabox: { lieu: "exterieur", nom: "Pergola", l: 3.5, p: 3, h: 2.5, meuble: 1, couvre: "poteaux", coul: "#5A4632" },
+  voile: { lieu: "exterieur", nom: "Voile d’ombrage", l: 3.6, p: 3.6, h: 2.6, meuble: 1, couvre: "voile", coul: "#E9E3D5" },
   lanterne: { lieu: "exterieur", nom: "Lanterne", l: 0.25, p: 0.25, h: 0.4, meuble: 1, rond: 1, coul: "#2E2A27" },
   douche: { lieu: "exterieur", nom: "Douche solaire", l: 0.4, p: 0.4, h: 2.2, meuble: 1, coul: "#9A9A96" },
   velo: { lieu: "exterieur", nom: "Range-vélos", l: 1.8, p: 0.6, h: 1, meuble: 1, coul: "#6B6F6C" },
@@ -820,12 +820,18 @@ function separer(A, B) {
   }
   return { x: mieux.x * mieux.r, y: mieux.y * mieux.r };
 }
-const genant = (o, q) => o !== q && o.type !== "allee" && q.type !== "allee";
-function libre(o, i, jeu = 0.005) { const c = contour(o, jeu); return !etat.elements.some((q, k) => k !== i && genant(o, q) && chevauche(c, contour(q))); }
+/* Ce qui gêne au sol : un élément couvrant (pergola, voile, parasol) n'occupe que ses poteaux ou son mât, le reste passe au-dessus du mobilier. */
+const genant = (o, q) => o !== q && o.type !== "allee" && q.type !== "allee" && !(ELEMENTS[o.type].couvre && ELEMENTS[q.type].couvre);
+function empreintes(o, jeu = 0) {
+  const d = ELEMENTS[o.type]; if (!d.couvre) return [contour(o, jeu)];
+  const a = o.rot * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), r = 0.07 + jeu, pts = d.couvre === "mat" ? [[0, 0]] : d.couvre === "voile" ? [[-o.l / 2, -o.p / 2], [o.l / 2, -o.p / 2], [0, o.p / 2]] : [[-o.l / 2, -o.p / 2], [o.l / 2, -o.p / 2], [o.l / 2, o.p / 2], [-o.l / 2, o.p / 2]];
+  return pts.map(([u, v]) => { const cx = o.x + u * co - v * si, cy = o.y + u * si + v * co; return [[-r, -r], [r, -r], [r, r], [-r, r]].map(([x, y]) => ({ x: cx + x * co - y * si, y: cy + x * si + y * co })); });
+}
+function libre(o, i, jeu = 0.005) { const eo = empreintes(o, jeu); return !etat.elements.some((q, k) => k !== i && genant(o, q) && empreintes(q).some(pq => eo.some(po => chevauche(po, pq)))); }
 function ecarter(o, i) {
   for (let n = 0; n < 16; n++) {
     let bouge = false;
-    etat.elements.forEach((q, k) => { if (k === i || !genant(o, q)) return; const v = separer(contour(o, 0.02), contour(q)); if (v) { o.x += v.x; o.y += v.y; bouge = true; } });
+    etat.elements.forEach((q, k) => { if (k === i || !genant(o, q)) return; for (const pq of empreintes(q)) for (const po of empreintes(o, 0.02)) { const v = separer(po, pq); if (v) { o.x += v.x; o.y += v.y; bouge = true; } } });
     if (!bouge) return true;
   }
   return libre(o, i);
@@ -1230,8 +1236,8 @@ function dessinerMeuble(g, o, z) {
   else if (t === "fauteuil") { rr(-L / 2, -P / 2, L, P, cadre, 0.12); rr(-L / 2 + 0.08, -P / 2 + 0.14, L - 0.16, P - 0.22, coussin, 0.08); }
   else if (t === "bain") { rr(-L / 2, -P / 2, L, P, cadre); rr(-L / 2 + 0.05, -P / 2 + 0.05, L - 0.1, P - 0.1, coussin); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; g.beginPath(); g.moveTo(-L / 2 * z, (-P / 2 + 0.6) * z); g.lineTo(L / 2 * z, (-P / 2 + 0.6) * z); g.stroke(); }
   else if (t === "banc") { rr(-L / 2, -P / 2, L, P, bois); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(-L / 2 * z, (-P / 2 + P * k / 4) * z); g.lineTo(L / 2 * z, (-P / 2 + P * k / 4) * z); g.stroke(); } }
-  else if (t === "parasol") { g.globalAlpha = 0.86; g.fillStyle = d.coul; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); } g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.2)"; g.lineWidth = 1; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); g.stroke(); } }
-  else if (t === "voile") { g.globalAlpha = 0.8; g.fillStyle = d.coul; g.beginPath(); g.moveTo(-L / 2 * z, -P / 2 * z); g.lineTo(L / 2 * z, -P / 2 * z); g.lineTo(0, P / 2 * z); g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.3)"; g.lineWidth = 1; g.stroke(); }
+  else if (t === "parasol") { g.globalAlpha = 0.6; g.fillStyle = d.coul; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); } g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.2)"; g.lineWidth = 1; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); g.stroke(); } }
+  else if (t === "voile") { g.globalAlpha = 0.55; g.fillStyle = d.coul; g.beginPath(); g.moveTo(-L / 2 * z, -P / 2 * z); g.lineTo(L / 2 * z, -P / 2 * z); g.lineTo(0, P / 2 * z); g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.3)"; g.lineWidth = 1; g.stroke(); for (const [u, v] of [[-L / 2, -P / 2], [L / 2, -P / 2], [0, P / 2]]) rond(u, v, 0.07, "#2E2420"); }
   else if (t === "barbecue" || t === "plancha") { rr(-L / 2, -P / 2, L, P, cadre); rr(-L / 2 + 0.2, -P / 2 + 0.06, L - 0.4, P - 0.12, t === "barbecue" ? "#1E1F20" : "#8A8D90"); if (t === "barbecue") { g.strokeStyle = "rgba(255,255,255,.28)"; g.lineWidth = 1; for (let i = 0; i < 6; i++) { const x = -L / 2 + 0.25 + i * (L - 0.5) / 5; g.beginPath(); g.moveTo(x * z, (-P / 2 + 0.1) * z); g.lineTo(x * z, (P / 2 - 0.1) * z); g.stroke(); } } }
   else if (t === "cuisineext") { rr(-L / 2, -P / 2, L, P, d.coul, 0.03); rr(-L / 2 + 0.1, -P / 2 + 0.08, 0.6, P - 0.16, "#1E1F20"); rond(L / 2 - 0.5, 0, 0.18, "#C9D3DA"); }
   else if (t === "brasero") { rond(0, 0, L / 2, d.coul); rond(0, 0, L / 2 - 0.1, "#C8622A"); }
@@ -1240,7 +1246,7 @@ function dessinerMeuble(g, o, z) {
   else if (t === "spaposable") { rr(-L / 2, -P / 2, L, P, d.coul, 0.2); rr(-L / 2 + 0.15, -P / 2 + 0.15, L - 0.3, P - 0.3, "#67BFD2", 0.5); g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 0.5 * z, 0, 6.3); g.stroke(); }
   else if (t === "hamac") { rr(-L / 2, -0.04, L, 0.08, cadre); rr(-L / 2 + 0.5, -P / 2 + 0.1, L - 1, P - 0.2, d.coul, 0.4); }
   else if (t === "balancelle") { rr(-L / 2, -P / 2, L, P, cadre, 0.08); rr(-L / 2 + 0.1, -P / 2 + 0.35, L - 0.2, P - 0.5, coussin, 0.06); }
-  else if (t === "pergolabox") { g.strokeStyle = d.coul; g.lineWidth = Math.max(2, 0.12 * z); g.strokeRect(-L / 2 * z, -P / 2 * z, L * z, P * z); g.lineWidth = Math.max(1, 0.05 * z); for (let i = 1; i < 7; i++) { const x = -L / 2 + L * i / 7; g.beginPath(); g.moveTo(x * z, -P / 2 * z); g.lineTo(x * z, P / 2 * z); g.stroke(); } }
+  else if (t === "pergolabox") { g.strokeStyle = d.coul; g.lineWidth = Math.max(2, 0.12 * z); g.strokeRect(-L / 2 * z, -P / 2 * z, L * z, P * z); g.globalAlpha = 0.45; g.lineWidth = Math.max(1, 0.05 * z); for (let i = 1; i < 7; i++) { const x = -L / 2 + L * i / 7; g.beginPath(); g.moveTo(x * z, -P / 2 * z); g.lineTo(x * z, P / 2 * z); g.stroke(); } g.globalAlpha = 1; for (const [u, v] of [[-L / 2, -P / 2], [L / 2, -P / 2], [L / 2, P / 2], [-L / 2, P / 2]]) rr(u - 0.07, v - 0.07, 0.14, 0.14, "#2E2420", 0.02); }
   else if (t === "lanterne") { rond(0, 0, L / 2, d.coul); rond(0, 0, L / 2 - 0.05, "#FFE9A8"); }
   else if (t === "douche") { rr(-L / 2, -P / 2, L, P, d.coul, 0.05); rond(0, 0, 0.12, "#C9D3DA"); }
   else if (t === "velo") { rr(-L / 2, -P / 2, L, P, d.coul, 0.03); for (let i = 0; i < 3; i++) rr(-L / 2 + 0.2 + i * 0.55, -P / 2 + 0.05, 0.08, P - 0.1, "#1E1F20"); }
@@ -1249,7 +1255,7 @@ function dessinerMeuble(g, o, z) {
 function dessinerElements() {
   const c = calepin, z = cam.z;
   const chemin = pts => { ctx.beginPath(); pts.forEach((p, k) => { const s = ecran(p); if (k) ctx.lineTo(s.x, s.y); else ctx.moveTo(s.x, s.y); }); ctx.closePath(); };
-  etat.elements.forEach(o => {
+  [...etat.elements].sort((a, b) => (ELEMENTS[a.type].couvre ? 1 : 0) - (ELEMENTS[b.type].couvre ? 1 : 0)).forEach(o => {
     const d = ELEMENTS[o.type], haut = o.horssol ? 0.04 : 0;
     if (haut || o.margelle) {
       const ext = contour(o, haut + (o.margelle ? c.w : 0)), int = contour(o, 0);
