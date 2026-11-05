@@ -267,7 +267,7 @@ h2, h3, p { margin: 0; }
 .sombre .c-sel { stroke: #0E6B5B; }
 .c-pastille.sel-t { fill: #0E6B5B; }
 [data-rot] { cursor: grab; }
-.rot-lien { stroke: #16201B; stroke-width: 2; stroke-dasharray: 4 4; fill: none; }
+.rot-lien { stroke: #16201B; stroke-width: 2; stroke-dasharray: 4 4; fill: none; pointer-events: none; }
 .sombre .sel { stroke: #0E6B5B; fill: rgba(14, 107, 91, .16); }
 [data-p] .tampon { cursor: move; }
 [data-p]:hover .tampon { fill: rgba(76, 194, 169, .25); }
@@ -355,6 +355,8 @@ h2, h3, p { margin: 0; }
       <button class="ico" type="button" id="lat-deplacer" aria-label="Déplacer l’ensemble" data-tip="Déplacer l’ensemble" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4"/></svg></button>
       <button class="ico" type="button" id="lat-tourner" aria-label="Tourner la terrasse" data-tip="Tourner la terrasse" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
       <button class="ico" type="button" id="lat-cotes" aria-label="Afficher les cotes" data-tip="Cotes" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M7 9v6M17 9v6M3 6v3M21 6v3M3 15v3M21 15v3"/></svg></button>
+      <button class="ico" type="button" id="lat-mur" aria-label="Coller la terrasse au mur de la maison" data-tip="Coller au mur de la maison" hidden><svg viewBox="0 0 24 24"><path d="M4 21V9l8-6 8 6v12M4 15h16"/><path d="M8 21v-6M16 21v-6" stroke-dasharray="2 2"/></svg></button>
+      <button class="ico" type="button" id="lat-aimant" aria-label="Aimanter aux murs" data-tip="Aimanter aux murs" aria-pressed="true" hidden><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3M6 3h4v8a2 2 0 0 0 4 0V3h4"/><path d="M6 7h4M14 7h4"/></svg></button>
       <button class="ico" type="button" id="lat-aide" aria-label="Aide sur cette étape" data-tip="Aide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 17h.01"/></svg></button>
     </div>
     <div class="outils flottant" role="group" aria-label="Zoom">
@@ -1073,6 +1075,12 @@ function dessinerFond() {
     const cx = fond.x + fond.l * fond.m / 2, cy = fond.y + fond.h * fond.m / 2, s = ecran({ x: cx, y: cy }), w = fond.l * fond.m * cam.z, h = fond.h * fond.m * cam.z;
     ctx.translate(s.x, s.y); ctx.rotate((fond.angle || 0) * Math.PI / 180); ctx.drawImage(fond.image, -w / 2, -h / 2, w, h);
     ctx.restore();
+    if (fond.aerien && fond.bat && fond.bat.length) {
+      // Emprises des bâtiments IGN : contour fin, et en vert les murs sur lesquels la terrasse est collée.
+      const trace = pts => { ctx.beginPath(); pts.forEach((q, i) => { const e = ecran(q); if (i) ctx.lineTo(e.x, e.y); else ctx.moveTo(e.x, e.y); }); ctx.closePath(); };
+      for (const b of fond.bat) { const pts = b.px.map(([x, y]) => pointFond(x, y)); trace(pts); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.stroke(); ctx.lineWidth = 1.2; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.stroke(); }
+      for (const w of mursColles()) { const a = ecran(w.A), b = ecran(w.B); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineWidth = 5; ctx.strokeStyle = "rgba(76,194,169,.95)"; ctx.lineCap = "round"; ctx.stroke(); }
+    }
     return;
   }
   if (!ext()) {
@@ -1428,6 +1436,92 @@ function bougerBord(base, i, m) {
   const dep = arrondi((m.x - (A.x + B.x) / 2) * nx + (m.y - (A.y + B.y) / 2) * ny), pts = base.map(p => ({ ...p }));
   pts[i].x += nx * dep; pts[i].y += ny * dep; pts[j].x += nx * dep; pts[j].y += ny * dep; return pts;
 }
+/* Murs réels (emprises BD TOPO de l'IGN) : la terrasse s'y aimante et peut s'y coller. */
+let aimant = true;
+function mursReels() {
+  const f = fond; if (!f || !f.aerien || !f.bat || !f.bat.length) return [];
+  const cle = `${f.angle || 0}:${f.x}:${f.y}:${f.m}`;
+  if (f.murs && f.mursCle === cle) return f.murs;
+  const r = [];
+  f.bat.forEach((b, k) => { const pts = b.px.map(([x, y]) => pointFond(x, y)); pts.forEach((A, i) => { const B = pts[(i + 1) % pts.length], len = Math.hypot(B.x - A.x, B.y - A.y); if (len > 0.4) r.push({ A, B, len, ux: (B.x - A.x) / len, uy: (B.y - A.y) / len, bat: k, pts }); }); });
+  f.murs = r; f.mursCle = cle; return r;
+}
+const distSeg = (P, w) => { const t = clamp(((P.x - w.A.x) * w.ux + (P.y - w.A.y) * w.uy) / w.len, 0, 1); return Math.hypot(w.A.x + w.ux * t * w.len - P.x, w.A.y + w.uy * t * w.len - P.y); };
+const ecartAngle = (ux, uy, w) => { let d = (Math.atan2(w.uy, w.ux) - Math.atan2(uy, ux)) * 180 / Math.PI; d = mod(d + 90, 180) - 90; return d; }; // écart signé en degrés, modulo 180
+const tolAimant = () => Math.max(0.08, 14 / cam.z);
+/* Décalage qui pose un bord de la terrasse sur un mur parallèle proche, puis aligne un angle sur un angle de mur. */
+function aimanterPoly(pts) {
+  const murs = mursReels(); if (!aimant || !murs.length) return null;
+  const tol = tolAimant(), n = pts.length; let mieux = null;
+  for (let i = 0; i < n; i++) {
+    const A = pts[i], B = pts[(i + 1) % n], len = Math.hypot(B.x - A.x, B.y - A.y) || 1, ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, M = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+    for (const w of murs) {
+      if (Math.abs(ecartAngle(ux, uy, w)) > 2.5) continue;
+      const nx = -w.uy, ny = w.ux, dp = (M.x - w.A.x) * nx + (M.y - w.A.y) * ny;
+      if (Math.abs(dp) > tol) continue;
+      const s0 = (A.x - w.A.x) * w.ux + (A.y - w.A.y) * w.uy, s1 = (B.x - w.A.x) * w.ux + (B.y - w.A.y) * w.uy;
+      if (Math.max(s0, s1) < -0.3 || Math.min(s0, s1) > w.len + 0.3) continue;
+      if (!mieux || Math.abs(dp) < Math.abs(mieux.dp)) mieux = { dp, nx, ny, w };
+    }
+  }
+  if (!mieux) return null;
+  const d = { x: -mieux.dp * mieux.nx, y: -mieux.dp * mieux.ny }, w = mieux.w; let gl = null;
+  for (const P of pts) { const Q = { x: P.x + d.x, y: P.y + d.y }; for (const E of [w.A, w.B]) { const su = (Q.x - E.x) * w.ux + (Q.y - E.y) * w.uy, sn = (Q.x - E.x) * mieux.nx + (Q.y - E.y) * mieux.ny; if (Math.abs(su) < tol && Math.abs(sn) < tol && (!gl || Math.abs(su) < Math.abs(gl))) gl = su; } }
+  if (gl !== null) { d.x -= gl * w.ux; d.y -= gl * w.uy; }
+  return d;
+}
+/* Petite rotation qui rend un bord parallèle au mur voisin. */
+function angleAimant(pts) {
+  const murs = mursReels(); if (!aimant || !murs.length) return 0;
+  const n = pts.length; let mieux = null;
+  for (let i = 0; i < n; i++) {
+    const A = pts[i], B = pts[(i + 1) % n], len = Math.hypot(B.x - A.x, B.y - A.y) || 1, ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, M = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+    for (const w of murs) { const e = ecartAngle(ux, uy, w); if (Math.abs(e) < 6 && distSeg(M, w) < 3 && (!mieux || Math.abs(e) < Math.abs(mieux))) mieux = e; }
+  }
+  return mieux || 0;
+}
+/* Un point glissé s'accroche à la ligne d'un mur proche, ou à un angle de mur. */
+function aimanterPoint(P) {
+  const murs = mursReels(); if (!aimant || !murs.length) return null;
+  const tol = tolAimant(); let mieux = null;
+  for (const w of murs) {
+    for (const E of [w.A, w.B]) { const d = Math.hypot(P.x - E.x, P.y - E.y); if (d < tol && (!mieux || d < mieux.d - 1e-9)) mieux = { d: d - 1e-6, x: E.x, y: E.y }; }
+    const t = ((P.x - w.A.x) * w.ux + (P.y - w.A.y) * w.uy) / w.len; if (t < -0.02 || t > 1.02) continue;
+    const Q = { x: w.A.x + w.ux * t * w.len, y: w.A.y + w.uy * t * w.len }, d = Math.hypot(P.x - Q.x, P.y - Q.y);
+    if (d < tol && (!mieux || d < mieux.d)) mieux = { d, x: Q.x, y: Q.y };
+  }
+  return mieux;
+}
+/* Murs sur lesquels un bord de la terrasse est effectivement posé (pour les surligner). */
+function mursColles() {
+  const murs = mursReels(); if (!murs.length) return [];
+  const pts = etat.poly, n = pts.length, r = [];
+  for (const w of murs) for (let i = 0; i < n; i++) {
+    const A = pts[i], B = pts[(i + 1) % n], len = Math.hypot(B.x - A.x, B.y - A.y) || 1, ux = (B.x - A.x) / len, uy = (B.y - A.y) / len;
+    if (Math.abs(ecartAngle(ux, uy, w)) > 0.6) continue;
+    const nx = -w.uy, ny = w.ux, dp = Math.abs(((A.x + B.x) / 2 - w.A.x) * nx + ((A.y + B.y) / 2 - w.A.y) * ny);
+    const s0 = (A.x - w.A.x) * w.ux + (A.y - w.A.y) * w.uy, s1 = (B.x - w.A.x) * w.ux + (B.y - w.A.y) * w.uy;
+    if (dp < 0.04 && Math.min(Math.max(s0, s1), w.len) - Math.max(Math.min(s0, s1), 0) > 0.3) { r.push(w); break; }
+  }
+  return r;
+}
+/* « Coller au mur » : tourne la terrasse pour qu'elle suive le mur le plus proche (ou celui des ouvertures) et pose ce bord dessus. */
+function collerAuMur() {
+  const murs = mursReels(); if (!murs.length) { toast("Aucun bâtiment IGN autour : chargez d’abord votre adresse."); return; }
+  const b = bords(), ouv = etat.ouvertures[0], e0 = ouv ? b[ancrage(ouv).i] : null;
+  const cand = (e0 ? [e0] : b).flatMap(e => murs.map(w => ({ e, w, d: distSeg({ x: (e.A.x + e.B.x) / 2, y: (e.A.y + e.B.y) / 2 }, w), a: ecartAngle(e.ux, e.uy, w) }))).filter(c => Math.abs(c.a) <= 45 && c.d < 12).sort((p, q) => p.d + Math.abs(p.a) * 0.05 - q.d - Math.abs(q.a) * 0.05);
+  if (!cand.length) { toast("Aucun mur assez proche : rapprochez d’abord la terrasse de la maison."); return; }
+  const { e, w, a } = cand[0]; memoriser();
+  const bb = boiteEnglobante(etat.poly), ce = { x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }, g = () => ({ ce, base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), rot0: etat.rotation || 0 });
+  if (Math.abs(a) > 0.01) tournerTerrasse(g(), a);
+  const b2 = bords()[e.i], M = { x: (b2.A.x + b2.B.x) / 2, y: (b2.A.y + b2.B.y) / 2 }, nx = -w.uy, ny = w.ux, dp = (M.x - w.A.x) * nx + (M.y - w.A.y) * ny, dep = l => l.map(o => ({ ...o, x: o.x - dp * nx, y: o.y - dp * ny }));
+  etat.poly = dep(etat.poly); etat.marches = dep(etat.marches); etat.ouvertures = dep(etat.ouvertures); etat.elements = dep(etat.elements); etat.forme = null;
+  // Si la terrasse est passée dans la maison, on la retourne de l'autre côté du mur (demi-tour autour du milieu du bord collé).
+  const c2 = boiteEnglobante(etat.poly), cc = { x: (c2.umin + c2.umax) / 2, y: (c2.vmin + c2.vmax) / 2 };
+  if (dansPoly(cc, w.pts)) { const b3 = bords()[e.i]; tournerTerrasse({ ...g(), ce: { x: (b3.A.x + b3.B.x) / 2, y: (b3.A.y + b3.B.y) / 2 } }, 180); }
+  synchroniser(); cadrer();
+  toast("Terrasse collée au mur de la maison. Elle y reste aimantée quand vous la déplacez.");
+}
 function tournerTerrasse(g, da) {
   const a = da * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), ce = g.ce, tp = p => ({ x: ce.x + (p.x - ce.x) * co - (p.y - ce.y) * si, y: ce.y + (p.x - ce.x) * si + (p.y - ce.y) * co });
   const np = g.base.map(p => { const q = tp(p); return { x: Math.round(q.x * 1000) / 1000, y: Math.round(q.y * 1000) / 1000 }; });
@@ -1476,6 +1570,8 @@ function afficherOutils() {
   else if (nom === "terrain" && ex) h = b("marche", "Ajouter une marche") + (fond && fond.aerien ? `<button class="ico" type="button" data-action="pente" data-tip="Lire la pente sur la carte IGN" aria-label="Lire la pente">${ico("pente")}</button>` : "");
   $("outils-etape").innerHTML = h;
   $("lat-tourner").hidden = !ex; $("lat-tourner").setAttribute("aria-pressed", String(tourner)); $("lat-deplacer").setAttribute("aria-pressed", String(deplacer)); $("lat-cotes").setAttribute("aria-pressed", String(cotes));
+  const murs = ex && !!(fond && fond.aerien && fond.bat && fond.bat.length);
+  $("lat-mur").hidden = !murs; $("lat-aimant").hidden = !murs; $("lat-aimant").setAttribute("aria-pressed", String(aimant));
   $("lateral").hidden = vue === "3d" || nom === "metre"; $("importer").hidden = vue === "3d"; $("outils-etape").hidden = vue === "3d";
 }
 let menuOuvert = null;
@@ -1502,6 +1598,8 @@ $("menu").addEventListener("click", e => {
 $("lat-deplacer").addEventListener("click", () => { deplacer = !deplacer; afficherOutils(); planifier(); if (deplacer) toast("Glissez la croix au centre pour déplacer l’ensemble."); });
 $("lat-tourner").addEventListener("click", () => { tourner = !tourner; afficherOutils(); planifier(); if (tourner) toast("Glissez la poignée ronde pour tourner la terrasse."); });
 $("lat-cotes").addEventListener("click", () => { cotes = !cotes; afficherOutils(); planifier(); });
+$("lat-mur").addEventListener("click", collerAuMur);
+$("lat-aimant").addEventListener("click", () => { aimant = !aimant; afficherOutils(); planifier(); toast(aimant ? "La terrasse s’aimante aux murs IGN quand vous la déplacez." : "Aimantation désactivée : placement libre."); });
 $("lat-aide").addEventListener("click", () => { const nom = nomEtape(), s = document.querySelector(`[data-etape="${nom}"]`), t = nom === "forme" ? $("aide-outil").textContent : nom === "elements" ? $("aide-elements").textContent : (s && s.querySelector(".chapo") ? s.querySelector(".chapo").textContent : ""); toast(t || "Suivez les étapes de gauche à droite."); });
 $("z-main").addEventListener("click", () => { choisirOutil("ajuster"); fermerMenu(); });
 $("importer").addEventListener("click", () => { if (nomEtape() !== "projet") allerEtape(0); choixFond("plan"); $("fichier").click(); });
@@ -1632,15 +1730,20 @@ scene.addEventListener("pointermove", e => {
   const m = monde(q.x, q.y);
   if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { o.x = m.x + (geste.dx || 0); o.y = m.y + (geste.dy || 0); maj(); } return; }
   if (geste.type === "element") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (o) { o.x = arrondi(m.x + geste.dx); o.y = arrondi(m.y + geste.dy); aimanter(o); if (ecarter(o, geste.i)) { geste.lx = o.x; geste.ly = o.y; } else { o.x = geste.lx; o.y = geste.ly; } maj(); } return; }
-  if (geste.type === "rotation") { if (!geste.ok) { memoriser(); geste.ok = true; } let da = (Math.atan2(m.y - geste.ce.y, m.x - geste.ce.x) - geste.a0) * 180 / Math.PI; if (!e.shiftKey) da = Math.round(da / 5) * 5; tournerTerrasse(geste, da); return; }
-  if (geste.type === "bloc") { if (!geste.ok) { memoriser(); geste.ok = true; } const dx = arrondi(m.x - geste.m.x), dy = arrondi(m.y - geste.m.y), dep = l => l.map(o => ({ ...o, x: o.x + dx, y: o.y + dy })), np = geste.base.map(p => ({ x: p.x + dx, y: p.y + dy })); if (!valide(np)) return; etat.poly = np; etat.marches = dep(geste.mar); etat.ouvertures = dep(geste.ouv); etat.elements = dep(geste.ele); maj(); return; }
+  if (geste.type === "rotation") { if (!geste.ok) { memoriser(); geste.ok = true; } let da = (Math.atan2(m.y - geste.ce.y, m.x - geste.ce.x) - geste.a0) * 180 / Math.PI; if (!e.shiftKey) da = Math.round(da / 5) * 5; if (aimant) { const a = da * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), ce = geste.ce, np = geste.base.map(p => ({ x: ce.x + (p.x - ce.x) * co - (p.y - ce.y) * si, y: ce.y + (p.x - ce.x) * si + (p.y - ce.y) * co })); da += angleAimant(np); } tournerTerrasse(geste, da); return; }
+  if (geste.type === "bloc") { if (!geste.ok) { memoriser(); geste.ok = true; } let dx = arrondi(m.x - geste.m.x), dy = arrondi(m.y - geste.m.y); const col = aimanterPoly(geste.base.map(p => ({ x: p.x + dx, y: p.y + dy }))); if (col) { dx += col.x; dy += col.y; } const dep = l => l.map(o => ({ ...o, x: o.x + dx, y: o.y + dy })), np = geste.base.map(p => ({ x: p.x + dx, y: p.y + dy })); if (!valide(np)) return; etat.poly = np; etat.marches = dep(geste.mar); etat.ouvertures = dep(geste.ouv); etat.elements = dep(geste.ele); maj(); return; }
   if (geste.type === "sommet" || geste.type === "bord") {
     let pts;
     if (geste.type === "sommet") {
       let x = arrondi(m.x), y = arrondi(m.y); const n = geste.base.length, tol = 10 / cam.z;
       for (const k of [(geste.i - 1 + n) % n, (geste.i + 1) % n]) { if (Math.abs(m.x - geste.base[k].x) < tol) x = geste.base[k].x; if (Math.abs(m.y - geste.base[k].y) < tol) y = geste.base[k].y; }
+      const col = aimanterPoint({ x: m.x, y: m.y }); if (col) { x = col.x; y = col.y; }
       pts = bougerSommet(geste.base, geste.i, x, y);
-    } else pts = bougerBord(geste.base, geste.i, m);
+    } else {
+      pts = bougerBord(geste.base, geste.i, m);
+      const i = geste.i, j = (i + 1) % pts.length, A = pts[i], B = pts[j], len = Math.hypot(B.x - A.x, B.y - A.y) || 1, ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, M = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+      if (aimant) for (const w of mursReels()) { if (Math.abs(ecartAngle(ux, uy, w)) > 2.5) continue; const nx = -w.uy, ny = w.ux, dp = (M.x - w.A.x) * nx + (M.y - w.A.y) * ny; const s0 = (A.x - w.A.x) * w.ux + (A.y - w.A.y) * w.uy, s1 = (B.x - w.A.x) * w.ux + (B.y - w.A.y) * w.uy; if (Math.abs(dp) < tolAimant() && Math.max(s0, s1) > -0.3 && Math.min(s0, s1) < w.len + 0.3) { pts[i] = { x: A.x - dp * nx, y: A.y - dp * ny }; pts[j] = { x: B.x - dp * nx, y: B.y - dp * ny }; break; } }
+    }
     if (valide(pts)) { if (!geste.ok) { passe.push(JSON.stringify({ ...JSON.parse(clone()), poly: geste.base })); futur.length = 0; geste.ok = true; boutonsHistorique(); } etat.poly = pts; etat.forme = null; appuyer("#formes", "data-forme", ""); maj(); }
   }
 });
@@ -2173,7 +2276,8 @@ async function chargerEnvironnement() {
       const gardes = []; for (const c of groupe) if (gardes.every(q => Math.hypot(q.i - c.i, q.j - c.j) >= 3.2)) gardes.push(c);
       for (const c of gardes) if (arbres.length < 220) arbres.push({ px: c.x, py: c.y, r: 1.7 + ((c.i * 7 + c.j * 13) % 10) / 10 * 1.5, c: c.c });
     }
-    f.arbres = arbres; sceneModifiee();
+    f.arbres = arbres; sceneModifiee(); afficherOutils(); planifier();
+    if (f.bat.length && ext()) toast("Bâtiments IGN chargés : la terrasse s’aimante à leurs murs, ou collez-la avec le bouton « maison » à droite.");
   } catch (e) { /* environnement indisponible */ }
 }
 async function lirePente() {
