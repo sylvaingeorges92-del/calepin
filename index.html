@@ -59,6 +59,25 @@ h2, h3, p { margin: 0; }
 #vue3d { position: absolute; inset: 0; background: #CFE3EE; cursor: grab; }
 #vue3d canvas { display: block; width: 100%; height: 100%; }
 .flottant { background: var(--panneau); border-radius: 12px; box-shadow: var(--ombre); }
+#vuephoto { position: absolute; inset: 0; background: #2A2F2B; }
+#photo-cv, #photo-calque { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#photo-calque [data-ph] { cursor: grab; }
+#photo-calque .ph-ligne { stroke: #4CC2A9; stroke-width: 2; stroke-dasharray: 6 5; fill: rgba(76, 194, 169, .08); }
+#photo-calque .ph-point { fill: #fff; stroke: #0E6B5B; stroke-width: 3; }
+#photo-calque .ph-num { fill: #0E6B5B; font: 800 13px var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+#photo-calque .ph-vide { fill: #fff; font: 600 16px var(--texte); text-anchor: middle; }
+.photo-mini { position: absolute; left: 14px; top: 66px; z-index: 3; width: 160px; height: 120px; }
+.photo-barre { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 8px; padding: 6px; width: max-content; max-width: calc(100% - 28px); box-sizing: border-box; flex-wrap: wrap; justify-content: center; }
+#vuephoto:not([hidden]) ~ #toast { bottom: 74px; }
+.photo-barre button { height: 40px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--creux); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.photo-barre button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.photo-barre button:disabled { opacity: .4; }
+.photo-barre #photo-choisir { background: var(--noir); color: var(--sur-noir); }
+.photo-barre [aria-pressed="true"] { background: var(--accent-doux); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.photo-op { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 0 6px; }
+.photo-op input { width: 110px; accent-color: var(--accent); }
+.photo-aide { position: absolute; right: 14px; top: 66px; z-index: 3; width: 250px; padding: 10px 12px; font-size: 13px; font-weight: 400; color: var(--doux); margin: 0; }
+@media (max-width: 900px) { .photo-aide { display: none; } .photo-mini { top: 56px; left: 8px; width: 110px; height: 82px; } .photo-barre { bottom: 8px; } }
 /* Barre d'outils au-dessus du plan, sur le modèle de calepinage.com : outils de l'étape à gauche, vues, historique et étape suivante à droite. */
 .barre-plan { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 4; display: flex; align-items: center; gap: 6px; padding: 5px; overflow: visible; }
 .barre-plan .sep { width: 1px; height: 26px; background: var(--ligne); flex: none; }
@@ -339,6 +358,19 @@ h2, h3, p { margin: 0; }
     <canvas id="plan" aria-label="Plan de pose"></canvas>
     <svg id="calque"></svg>
     <div id="vue3d" hidden></div>
+    <div id="vuephoto" hidden>
+      <canvas id="photo-cv" aria-label="Votre photo avec le sol calepiné"></canvas>
+      <svg id="photo-calque"></svg>
+      <canvas class="photo-mini flottant" id="photo-mini" width="160" height="120" aria-hidden="true"></canvas>
+      <div class="photo-barre flottant">
+        <button type="button" id="photo-choisir"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Choisir une photo</button>
+        <input id="photo-fichier" type="file" accept="image/*" hidden>
+        <label class="photo-op">Opacité<input id="photo-opacite" type="range" min="30" max="100" value="92"></label>
+        <button type="button" id="photo-meubles" aria-pressed="false">Meubles</button>
+        <button type="button" id="photo-telecharger" disabled><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Télécharger</button>
+      </div>
+      <p class="photo-aide flottant" id="photo-aide">Prenez la photo debout, face à la pièce, puis glissez les quatre repères numérotés sur les coins du sol : 1 et 2 au fond, 3 et 4 devant (ils peuvent sortir de la photo).</p>
+    </div>
     <input id="cote-edit" type="text" inputmode="decimal" aria-label="Longueur en mètres" hidden>
     <div class="barre-plan flottant" id="barre-plan" role="toolbar" aria-label="Outils du plan">
       <div class="outils-etape" id="outils-etape" role="group" aria-label="Outils de l’étape"></div>
@@ -347,6 +379,7 @@ h2, h3, p { margin: 0; }
         <button type="button" data-vue="plan" aria-pressed="true">Plan</button>
         <button type="button" data-vue="structure" id="vue-structure" aria-pressed="false">Structure</button>
         <button type="button" data-vue="3d" aria-pressed="false">3D</button>
+        <button type="button" data-vue="photo" aria-pressed="false">Photo</button>
       </div>
       <div class="sep"></div>
       <button class="ico" type="button" id="annuler" aria-label="Annuler" data-tip="Annuler" disabled><svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h11a5 5 0 0 1 5 5"/></svg></button>
@@ -1404,6 +1437,7 @@ function dessinerMeuble(g, o, z) {
   else rr(-L / 2, -P / 2, L, P, d.coul);
 }
 function dessinerElements() {
+  if (capture && !capture.meubles) return;
   const c = calepin, z = cam.z;
   const chemin = pts => { ctx.beginPath(); pts.forEach((p, k) => { const s = ecran(p); if (k) ctx.lineTo(s.x, s.y); else ctx.moveTo(s.x, s.y); }); ctx.closePath(); };
   [...etat.elements].sort((a, b) => (ELEMENTS[a.type].couvre ? 1 : 0) - (ELEMENTS[b.type].couvre ? 1 : 0)).forEach(o => {
@@ -1446,11 +1480,13 @@ function pointsSpots() {
   }
   return r;
 }
+let capture = null; // { meubles } pendant la capture du plan pour la vue Photo
 function dessiner() {
   if (!LP || vue === "3d") return;
+  if (vue === "photo" && !capture) return;
   const c = calepin, ex = c.estExt;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  dessinerFond();
+  if (capture) ctx.clearRect(0, 0, LP, HP); else dessinerFond();
   if (ex) { ctx.save(); ctx.shadowColor = "rgba(20,30,20,.4)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6; ctx.fillStyle = "#2F271E"; tracerPoly(); ctx.fill(); ctx.restore(); }
   if (!ex) {
     const n = etat.pieces.length, ordre = [...Array(n).keys()].filter(i => i !== etat.active).concat(etat.active);
@@ -1466,12 +1502,13 @@ function dessiner() {
   if (vue === "structure" && ex) dessinerStructure();
   if (ex) { ctx.lineWidth = 2; ctx.strokeStyle = "#16201B"; tracerPoly(); ctx.stroke(); dessinerMarches(); dessinerOuvertures(); }
   dessinerElements();
+  if (capture && !capture.meubles) { ctx.save(); ctx.globalCompositeOperation = "destination-in"; tracerPoly(); ctx.fill(); ctx.restore(); return; }
   if (ex && etat.spots && vue === "plan") for (const q of pointsSpots()) { const s = ecran(q); ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(3, 0.04 * cam.z), 0, 6.3); ctx.fillStyle = "#FFE9A8"; ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); }
   dessinerCalque();
 }
 const texteCalque = (x, y, t, attrs = "") => { const lp = t.length * 6.8 + 16; return `<g ${attrs}><rect class="c-pastille" x="${x - lp / 2}" y="${y - 12}" width="${lp}" height="24" rx="7"/><text class="c-texte" x="${x}" y="${y}">${t}</text></g>`; };
 function dessinerCalque() {
-  if (vue === "3d") { calque.innerHTML = ""; return; }
+  if (vue === "3d" || capture) { if (!capture) calque.innerHTML = ""; return; }
   const c = calepin, pts = etat.poly, nom = nomEtape(), edition = nom === "projet" || nom === "forme", marqueCote = cotes && (nom !== "terrain" || !c.estExt), bordSel = nom === "elements" && etat.ouvertures[choixO] ? ancrage(etat.ouvertures[choixO]).i : -1;
   calque.setAttribute("class", `${c.estExt && !fond ? "" : "sombre"} ${outil === "retirer" ? "retirer" : ""} ${["encoche", "pancoupe"].includes(outil) ? "cible" : ""}`);
   let h = "";
@@ -1755,7 +1792,7 @@ function afficherOutils() {
   $("lat-tourner").hidden = !ex; $("lat-tourner").setAttribute("aria-pressed", String(tourner)); $("lat-deplacer").setAttribute("aria-pressed", String(deplacer)); $("lat-cotes").setAttribute("aria-pressed", String(cotes));
   const murs = ex && !!(fond && fond.aerien && fond.bat && fond.bat.length);
   $("lat-mur").hidden = !murs; $("lat-aimant").hidden = !murs; $("lat-aimant").setAttribute("aria-pressed", String(aimant));
-  $("lateral").hidden = vue === "3d" || nom === "metre"; $("importer").hidden = vue === "3d"; $("outils-etape").hidden = vue === "3d";
+  $("lateral").hidden = vue === "3d" || vue === "photo" || nom === "metre"; $("importer").hidden = vue === "3d" || vue === "photo"; $("outils-etape").hidden = vue === "3d" || vue === "photo";
 }
 let menuOuvert = null;
 function fermerMenu() { if (!menuOuvert) return; $("menu").hidden = true; menuOuvert = null; }
@@ -1840,7 +1877,7 @@ function encocher(i, chanfrein) {
 const pointeurs = new Map(); let geste = null;
 const pos = e => { const r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 scene.addEventListener("pointerdown", e => {
-  if (vue === "3d" || e.target.closest(".barre-plan, .ar, .outils, .lateral, .importer, .bandeau, .legende, #cote-edit, #bulle, #menu")) return;
+  if (vue === "3d" || vue === "photo" || e.target.closest(".barre-plan, .ar, .outils, .lateral, .importer, .bandeau, .legende, #cote-edit, #bulle, #menu")) return;
   fermerEdition(true); fermerMenu();
   const q = pos(e); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
   const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-co],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-erot],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
@@ -1961,7 +1998,7 @@ scene.addEventListener("pointermove", e => {
 });
 function finGeste(e) { pointeurs.delete(e.pointerId); if (geste && geste.type === "room") { const q = pos(e), i = geste.i, bouge = Math.hypot(q.x - geste.x, q.y - geste.y) >= 8; geste = null; if (!bouge) choisirPiece(i); return; } if (geste && (geste.type === "cote" || geste.type === "cote-ouv")) { const q = pos(e); if (Math.hypot(q.x - geste.x, q.y - geste.y) < 8) { if (geste.type === "cote") ouvrirEdition(geste.i); else ouvrirEditionOuv(geste.k); } } if (!pointeurs.size) geste = null; }
 scene.addEventListener("pointerup", finGeste); scene.addEventListener("pointercancel", finGeste);
-scene.addEventListener("wheel", e => { if (vue === "3d") return; e.preventDefault(); zoomer(Math.exp(-e.deltaY * 0.0016), pos(e)); }, { passive: false });
+scene.addEventListener("wheel", e => { if (vue === "3d" || vue === "photo") return; e.preventDefault(); zoomer(Math.exp(-e.deltaY * 0.0016), pos(e)); }, { passive: false });
 function zoomer(f, c = { x: LP / 2, y: HP / 2 }) { const z = clamp(cam.z * f, 6, 400); cam.ox = c.x - (c.x - cam.ox) * z / cam.z; cam.oy = c.y - (c.y - cam.oy) * z / cam.z; cam.z = z; planifier(); }
 calque.addEventListener("keydown", e => { const g = e.target.closest && e.target.closest("[data-c]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ouvrirEdition(+g.dataset.c); } });
 let edition = null;
@@ -2211,6 +2248,7 @@ function maj() {
   afficherResume(); afficherTerrain(); afficherListes(); afficherMetre(); afficherLegende();
   planifier();
   if (vue === "3d") sceneModifiee();
+  if (vue === "photo") { photoCache = null; dessinerPhoto(); }
 }
 function afficherLames() {
   const liste = CATALOGUE.filter(p => p.lieu === etat.lieu && (famille === "tout" || p.fam === famille));
@@ -2394,7 +2432,7 @@ $("annuler").addEventListener("click", () => { if (!passe.length) return; futur.
 $("refaire").addEventListener("click", () => { if (!futur.length) return; passe.push(clone()); restaurer(futur.pop()); });
 $("z-plus").addEventListener("click", () => zoomer(1.25)); $("z-moins").addEventListener("click", () => zoomer(0.8)); $("z-cadre").addEventListener("click", cadrer);
 document.querySelectorAll("[data-vue]").forEach(b => b.addEventListener("click", () => changerVue(b.dataset.vue)));
-$("enregistrer").addEventListener("click", () => { try { localStorage.setItem(CLE, clone()); toast("Projet enregistré sur cet appareil."); } catch (e) { toast("L’enregistrement n’est pas disponible ici."); } });
+$("enregistrer").addEventListener("click", () => { try { localStorage.setItem(CLE, clone()); if (photo.data) localStorage.setItem(CLE + ":photo", JSON.stringify({ data: photo.data, pts: photo.pts, opacite: photo.opacite })); toast("Projet enregistré sur cet appareil."); } catch (e) { toast("L’enregistrement n’est pas disponible ici."); } });
 
 const chargerScript = (src, g) => new Promise((ok, ko) => { if (g && window[g]) return ok(); const s = document.createElement("script"); s.src = src; s.onload = () => ok(); s.onerror = () => ko(new Error(src)); document.head.appendChild(s); });
 function bandeau(h) { const b = $("bandeau"); b.innerHTML = h; b.hidden = !h; }
@@ -2624,15 +2662,119 @@ function maillage(centre) {
 }
 let T = null, sale = false, boucle3D = false;
 function panneauErreur3D() { $("vue3d").innerHTML = '<p style="padding:90px 24px 0;text-align:center;color:#16201B">La vue 3D ne peut pas se charger ici.</p>'; }
+/* Vue Photo : le sol calepiné (et au choix les meubles du plan) incrusté en perspective sur une photo de la pièce.
+   Quatre repères glissables = les quatre coins de la boîte englobante du plan ; une homographie fait le reste. */
+let photo = { img: null, data: null, pts: null, opacite: 0.92, meubles: false }, photoCache = null, gestePhoto = null;
+const pcv = $("photo-cv"), pctx = pcv.getContext("2d"), pcalque = $("photo-calque");
+function resoudre(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; [M[c], M[p]] = [M[p], M[c]]; const d = M[c][c] || 1e-12; for (let r = 0; r < n; r++) { if (r === c) continue; const f = M[r][c] / d; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; } }
+  return M.map((r, i) => r[n] / (r[i] || 1e-12));
+}
+function homographie(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) { const { x, y } = src[i], { x: u, y: v } = dst[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); }
+  const h = resoudre(A, b); return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+}
+const projeter = (H, x, y) => { const w = H[6] * x + H[7] * y + H[8]; return { x: (H[0] * x + H[1] * y + H[2]) / w, y: (H[3] * x + H[4] * y + H[5]) / w }; };
+function cadrePhoto() {
+  const im = photo.img; if (!im) return null;
+  const marge = 70, k = Math.min((LP - 2 * marge) / im.width, (HP - 150 - marge) / im.height), w = im.width * k, h = im.height * k;
+  return { x: (LP - w) / 2, y: 60 + (HP - 150 - h) / 2, w, h, k };
+}
+function imagePlan() {
+  // Rend le plan dans une image carrée orientée sur la boîte englobante (sans fond ni cotes), en passant par le canvas principal.
+  const bb = boiteEnglobante(etat.poly), bw = bb.umax - bb.umin, bh = bb.vmax - bb.vmin, W = 1400, H = Math.round(W * bh / bw);
+  const sv = { cam: { ...cam }, LP, HP, DPR, w: cvs.width, h: cvs.height };
+  LP = W; HP = H; DPR = 1; cvs.width = W; cvs.height = H; cam = { z: W / bw, ox: -bb.umin * W / bw, oy: -bb.vmin * W / bw };
+  capture = { meubles: photo.meubles }; dessiner(); capture = null;
+  const off = document.createElement("canvas"); off.width = W; off.height = H; off.getContext("2d").drawImage(cvs, 0, 0);
+  LP = sv.LP; HP = sv.HP; DPR = sv.DPR; cvs.width = sv.w; cvs.height = sv.h; cam = sv.cam;
+  return { off, bb, W, H };
+}
+function dessinerPhoto() {
+  if (vue !== "photo") return;
+  const r = scene.getBoundingClientRect(); LP = r.width; HP = r.height;
+  pcv.width = Math.round(LP * DPR); pcv.height = Math.round(HP * DPR); pcalque.setAttribute("viewBox", `0 0 ${LP} ${HP}`);
+  pctx.setTransform(DPR, 0, 0, DPR, 0, 0); pctx.clearRect(0, 0, LP, HP);
+  $("photo-telecharger").disabled = !photo.img;
+  if (!photo.img) { pcalque.innerHTML = `<text class="ph-vide" x="${LP / 2}" y="${HP / 2 - 10}">Choisissez une photo de votre pièce</text><text class="ph-vide" x="${LP / 2}" y="${HP / 2 + 16}" style="font-weight:400;font-size:13.5px;opacity:.8">prise debout, face au fond de la pièce</text>`; dessinerMiniPlan(); return; }
+  const c = cadrePhoto();
+  pctx.drawImage(photo.img, c.x, c.y, c.w, c.h);
+  if (!photo.pts) photo.pts = [{ x: 0.28, y: 0.6 }, { x: 0.72, y: 0.6 }, { x: 1.08, y: 1.12 }, { x: -0.08, y: 1.12 }];
+  const E = photo.pts.map(q => ({ x: c.x + q.x * c.w, y: c.y + q.y * c.h }));
+  if (!photoCache) photoCache = imagePlan();
+  const { off, bb, W, H } = photoCache, Hm = homographie([{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: H }, { x: 0, y: H }], E);
+  const z = W / (bb.umax - bb.umin), poly = etat.poly.map(q => projeter(Hm, (q.x - bb.umin) * z, (q.y - bb.vmin) * z));
+  pctx.save(); pctx.beginPath(); poly.forEach((q, i) => i ? pctx.lineTo(q.x, q.y) : pctx.moveTo(q.x, q.y)); pctx.closePath(); pctx.clip();
+  pctx.globalAlpha = photo.opacite;
+  const N = 26;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const x0 = i * W / N, y0 = j * H / N, x1 = (i + 1) * W / N, y1 = (j + 1) * H / N;
+    const d = [projeter(Hm, x0, y0), projeter(Hm, x1, y0), projeter(Hm, x1, y1), projeter(Hm, x0, y1)];
+    triangle(off, [[x0, y0], [x1, y0], [x1, y1]], [d[0], d[1], d[2]]); triangle(off, [[x0, y0], [x1, y1], [x0, y1]], [d[0], d[2], d[3]]);
+  }
+  pctx.globalAlpha = 0.45; pctx.globalCompositeOperation = "multiply"; pctx.drawImage(photo.img, c.x, c.y, c.w, c.h); // garde les ombres de la photo
+  pctx.restore();
+  pcalque.innerHTML = `<path class="ph-ligne" d="${E.map((q, i) => `${i ? "L" : "M"}${q.x} ${q.y}`).join("")}Z"/>` + E.map((q, i) => `<g data-ph="${i}" role="button" aria-label="Repère ${i + 1}"><circle class="tampon" cx="${q.x}" cy="${q.y}" r="26"/><circle class="ph-point" cx="${q.x}" cy="${q.y}" r="14"/><text class="ph-num" x="${q.x}" y="${q.y}">${i + 1}</text></g>`).join("");
+  dessinerMiniPlan();
+}
+function triangle(img, s, d) {
+  // Affine qui envoie le triangle source (pixels de l'image) sur le triangle écran, légèrement élargi pour masquer les coutures.
+  const cx = (d[0].x + d[1].x + d[2].x) / 3, cy = (d[0].y + d[1].y + d[2].y) / 3, D = d.map(q => ({ x: cx + (q.x - cx) * 1.03, y: cy + (q.y - cy) * 1.03 }));
+  const [[x0, y0], [x1, y1], [x2, y2]] = s, det = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0); if (Math.abs(det) < 1e-9) return;
+  const a = ((D[1].x - D[0].x) * (y2 - y0) - (D[2].x - D[0].x) * (y1 - y0)) / det, b = ((D[1].y - D[0].y) * (y2 - y0) - (D[2].y - D[0].y) * (y1 - y0)) / det;
+  const c = ((D[2].x - D[0].x) * (x1 - x0) - (D[1].x - D[0].x) * (x2 - x0)) / det, dd = ((D[2].y - D[0].y) * (x1 - x0) - (D[1].y - D[0].y) * (x2 - x0)) / det;
+  const e = D[0].x - a * x0 - c * y0, f = D[0].y - b * x0 - dd * y0;
+  pctx.save(); pctx.beginPath(); pctx.moveTo(D[0].x, D[0].y); pctx.lineTo(D[1].x, D[1].y); pctx.lineTo(D[2].x, D[2].y); pctx.closePath(); pctx.clip();
+  pctx.transform(a, b, c, dd, e, f);
+  const sx = Math.min(x0, x1, x2) - 2, sy = Math.min(y0, y1, y2) - 2, sw = Math.max(x0, x1, x2) - sx + 2, sh = Math.max(y0, y1, y2) - sy + 2;
+  pctx.drawImage(img, sx, sy, sw, sh, sx, sy, sw, sh); pctx.restore();
+}
+function dessinerMiniPlan() {
+  const m = $("photo-mini"), g = m.getContext("2d"), bb = boiteEnglobante(etat.poly), bw = bb.umax - bb.umin, bh = bb.vmax - bb.vmin, k = Math.min(110 / bw, 76 / bh), ox = (160 - bw * k) / 2, oy = 14 + (92 - bh * k) / 2;
+  g.clearRect(0, 0, 160, 120); g.fillStyle = "#D9D4C9"; g.beginPath(); etat.poly.forEach((q, i) => { const x = ox + (q.x - bb.umin) * k, y = oy + (q.y - bb.vmin) * k; if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.closePath(); g.fill(); g.strokeStyle = "#16201B"; g.lineWidth = 1.5; g.stroke();
+  g.setLineDash([3, 3]); g.strokeStyle = "#0E6B5B"; g.strokeRect(ox, oy, bw * k, bh * k); g.setLineDash([]);
+  [[bb.umin, bb.vmin], [bb.umax, bb.vmin], [bb.umax, bb.vmax], [bb.umin, bb.vmax]].forEach(([x, y], i) => { const px = ox + (x - bb.umin) * k, py = oy + (y - bb.vmin) * k; g.fillStyle = "#0E6B5B"; g.beginPath(); g.arc(px, py, 9, 0, 6.3); g.fill(); g.fillStyle = "#fff"; g.font = "800 11px " + getComputedStyle(document.body).fontFamily; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(String(i + 1), px, py); });
+  g.fillStyle = "#5A6761"; g.font = "600 11px " + getComputedStyle(document.body).fontFamily; g.textAlign = "center"; g.fillText(`${fr(bw, 2)} × ${fr(bh, 2)} m`, 80, 112);
+}
+pcalque.addEventListener("pointerdown", e => {
+  const g = e.target.closest("[data-ph]"); if (!g || !photo.img) return;
+  e.preventDefault(); pcalque.setPointerCapture(e.pointerId); gestePhoto = { i: +g.dataset.ph, id: e.pointerId };
+});
+pcalque.addEventListener("pointermove", e => {
+  if (!gestePhoto || e.pointerId !== gestePhoto.id) return;
+  const r = scene.getBoundingClientRect(), c = cadrePhoto(); if (!c) return;
+  photo.pts[gestePhoto.i] = { x: (e.clientX - r.left - c.x) / c.w, y: (e.clientY - r.top - c.y) / c.h };
+  dessinerPhoto();
+});
+const finPhoto = e => { if (gestePhoto && e.pointerId === gestePhoto.id) gestePhoto = null; };
+pcalque.addEventListener("pointerup", finPhoto); pcalque.addEventListener("pointercancel", finPhoto);
+$("photo-choisir").addEventListener("click", () => $("photo-fichier").click());
+$("photo-fichier").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f), im = new Image();
+  im.onload = () => {
+    // Réduite à 1600 px pour rester légère (affichage et enregistrement).
+    const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement("canvas"); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+    const im2 = new Image(); im2.onload = () => { photo.img = im2; photo.pts = null; URL.revokeObjectURL(url); dessinerPhoto(); toast("Glissez les repères 1 à 4 sur les coins du sol de la pièce."); }; photo.data = c.toDataURL("image/jpeg", 0.85); im2.src = photo.data;
+  };
+  im.src = url; e.target.value = "";
+});
+$("photo-opacite").addEventListener("input", e => { photo.opacite = +e.target.value / 100; dessinerPhoto(); });
+$("photo-meubles").addEventListener("click", () => { photo.meubles = !photo.meubles; $("photo-meubles").setAttribute("aria-pressed", String(photo.meubles)); photoCache = null; dessinerPhoto(); });
+$("photo-telecharger").addEventListener("click", () => { if (!photo.img) return; const a = document.createElement("a"); a.href = pcv.toDataURL("image/jpeg", 0.92); a.download = "calepin-photo.jpg"; document.body.appendChild(a); a.click(); a.remove(); });
+function chargerPhoto() { try { const j = localStorage.getItem(CLE + ":photo"); if (!j) return; const o = JSON.parse(j); const im = new Image(); im.onload = () => { photo.img = im; photo.pts = o.pts; photo.data = o.data; photo.opacite = o.opacite || 0.92; $("photo-opacite").value = Math.round(photo.opacite * 100); if (vue === "photo") dessinerPhoto(); }; im.src = o.data; } catch (e) { /* pas de photo enregistrée */ } }
 async function changerVue(v) {
   vue = v;
   document.querySelectorAll("[data-vue]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vue === v)));
-  const t = v === "3d";
-  $("vue3d").hidden = !t; cvs.hidden = t; calque.style.display = t ? "none" : "";
-  $("z-moins").hidden = $("z-plus").hidden = $("z-cadre").hidden = $("z-main").hidden = t;
-  $("credit").hidden = !(fond && fond.aerien);
-  afficherLegende(); afficherOutils(); fermerMenu(); if (t) $("bulle").hidden = true;
+  const t = v === "3d", ph = v === "photo";
+  $("vue3d").hidden = !t; $("vuephoto").hidden = !ph; cvs.hidden = t || ph; calque.style.display = t || ph ? "none" : "";
+  $("z-moins").hidden = $("z-plus").hidden = $("z-cadre").hidden = $("z-main").hidden = t || ph;
+  $("credit").hidden = !(fond && fond.aerien) || ph; $("btn-ar").hidden = ph;
+  afficherLegende(); afficherOutils(); fermerMenu(); if (t || ph) $("bulle").hidden = true;
   if (t) { try { await chargerScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "THREE"); initialiser3D(); sceneModifiee(); } catch (e) { panneauErreur3D(); } }
+  else if (ph) { photoCache = null; dessinerPhoto(); }
   else planifier();
 }
 const teinte = c => new THREE.Color(c).convertSRGBToLinear();
@@ -2943,7 +3085,8 @@ $("fermer").addEventListener("click", () => { $("feuille").hidden = true; $("mv-
 $("feuille").addEventListener("click", e => { if (e.target === $("feuille")) $("fermer").click(); });
 $("btn-copie").addEventListener("click", async () => { const b = $("btn-copie"); try { await navigator.clipboard.writeText(location.href); b.textContent = "Lien copié"; } catch (e) { $("lien-texte").textContent = location.href; b.textContent = "Copiez le lien ci-dessous"; } });
 
-new ResizeObserver(() => { redimensionner(); if (T && vue === "3d") T.resize(); }).observe(scene);
+new ResizeObserver(() => { redimensionner(); if (T && vue === "3d") T.resize(); if (vue === "photo") dessinerPhoto(); }).observe(scene);
+chargerPhoto();
 try { const s = localStorage.getItem(CLE); if (s) { Object.assign(etat, JSON.parse(s)); setTimeout(() => toast("Votre projet enregistré est repris."), 400); } } catch (e) { /* stockage indisponible */ }
 if (!etat.pieces.length) etat.pieces = [copie(extraire(etat))];
 redimensionner(); synchroniser(); allerEtape(0); fondActif(); cadrer();
