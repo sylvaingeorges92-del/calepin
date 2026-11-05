@@ -1431,8 +1431,8 @@ function afficherBulle() {
   if (vue !== "3d" && nom === "elements" && etat.elements[choix]) {
     const o = etat.elements[choix], d = ELEMENTS[o.type], esc_ = o.type === "escalier";
     const pergo = o.type === "pergolabox" ? `<div class="sep"></div>` + Object.entries(PERGOLAS).map(([k, v]) => `<button class="ico texte" type="button" data-bstyle="${k}" aria-pressed="${stylePergola(o) === k}" data-tip="${esc(v.aide)}">${esc(v.nom)}</button>`).join("") + `<div class="sep"></div>` + COULEURS_PERGOLA[stylePergola(o) === "bois" ? "bois" : "alu"].map(([k, c, n]) => `<button class="pastille" type="button" data-bcoul="${k}" aria-pressed="${coulPergola(o) === c}" data-tip="${esc(n)}" aria-label="${esc(n)}" style="--c:${c}"></button>`).join("") + (stylePergola(o) === "toile" ? `<div class="sep"></div>` + TOILES.map(([k, c, n]) => `<button class="pastille" type="button" data-btoile="${k}" aria-pressed="${coulToile(o) === c}" data-tip="Toile ${esc(n.toLowerCase())}" aria-label="Toile ${esc(n)}" style="--c:${c}"></button>`).join("") : "") : "";
-    html = `<span class="nom">${esc(d.nom)}</span>${pergo}<div class="sep"></div>${pm("bl", d.rond ? "large" : "long", o.l, d.rond ? "diamètre" : "longueur")}${d.rond || esc_ ? "" : pm("bp", "large", o.p, "largeur")}${d.rond ? "" : `<div class="sep"></div><span class="val">${fr(mod(Math.round((o.rot - angleTerrasse()) * 10) / 10, 360), 0)}°<small>${ext() ? "sur la terrasse" : "angle"}</small></span><button class="ico" type="button" data-brot="1" data-tip="Quart de tour (reste aligné sur la terrasse) · glissez la poignée ronde pour un angle libre" aria-label="Tourner d’un quart de tour">${ico("tourner")}</button>`}${fin}`;
-    cle = `e${choix}:${o.type}:${o.l}:${o.p}:${o.rot}:${o.style || ""}:${o.coul || ""}:${o.toile || ""}`; centre = o; rayon = Math.max(o.l, o.p) * z / 2 + 6;
+    html = `<span class="nom">${esc(d.nom)}</span>${pergo}<div class="sep"></div>${pm("bl", d.rond ? "large" : "long", o.l, d.rond ? "diamètre" : "longueur")}${d.rond || esc_ ? "" : pm("bp", "large", o.p, "largeur")}${o.type === "pergolabox" ? pm("bht", "haut", o.ht || d.h, "hauteur") : ""}${d.rond ? "" : `<div class="sep"></div><span class="val">${fr(mod(Math.round((o.rot - angleTerrasse()) * 10) / 10, 360), 0)}°<small>${ext() ? "sur la terrasse" : "angle"}</small></span><button class="ico" type="button" data-brot="1" data-tip="Quart de tour (reste aligné sur la terrasse) · glissez la poignée ronde pour un angle libre" aria-label="Tourner d’un quart de tour">${ico("tourner")}</button>`}${fin}`;
+    cle = `e${choix}:${o.type}:${o.l}:${o.p}:${o.rot}:${o.style || ""}:${o.coul || ""}:${o.toile || ""}:${o.ht || ""}`; centre = o; rayon = Math.max(o.l, o.p) * z / 2 + 6;
   } else if (vue !== "3d" && nom === "elements" && etat.ouvertures[choixO]) {
     const o = etat.ouvertures[choixO], a = ancrage(o), d = OUVERTURES[o.type];
     html = `<span class="nom">${esc(d.nom)}</span><div class="sep"></div>` + ouverturesLieu().map(([k, v]) => `<button class="ico" type="button" data-bo="${k}" aria-pressed="${k === o.type}" data-tip="${esc(v.nom)}" aria-label="${esc(v.nom)}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_OUV[k] || ICO.ouverture}</svg></button>`).join("") + `<div class="sep"></div>${pm("bw", "large", a.l)}${fin}`;
@@ -1749,7 +1749,7 @@ $("bulle").addEventListener("click", e => {
   const el = etat.elements[choix], ouv = etat.ouvertures[choixO], mar = etat.marches[choixM];
   if (d.bsup) { memoriser(); if (el) etat.elements.splice(choix, 1); else if (ouv) etat.ouvertures.splice(choixO, 1); else if (mar) etat.marches.splice(choixM, 1); choisir("", -1); synchroniser(); return; }
   if (d.brot && el) { tournerElement(choix); return; }
-  if ((d.bl || d.bp) && el) { const k = d.bl ? "l" : "p", v = Math.round((el[k] + (+(d.bl || d.bp)) * 0.1) * 100) / 100; retailler(choix, k, v); return; }
+  if ((d.bl || d.bp || d.bht) && el) { const k = d.bl ? "l" : d.bp ? "p" : "ht", v = Math.round(((el[k] || ELEMENTS[el.type].h) + (+(d.bl || d.bp || d.bht)) * 0.1) * 100) / 100; retailler(choix, k, v); return; }
   if (d.bw && (ouv || mar)) { memoriser(); const o = ouv || mar, [mini, maxi] = ouv ? [0.4, 8] : [0.6, 6], l0 = o.l; o.l = clamp(Math.round((o.l + (+d.bw) * 0.1) * 100) / 100, mini, maxi); caler(ouv ? "ouvertures" : "marches", ouv ? choixO : choixM, undefined, true); if (o.l < l0 + 1e-6 && +d.bw > 0) toast("Butée : la voisine ou le bout du mur est atteint."); synchroniser(); return; }
   if (d.bo && ouv) { memoriser(); ouv.type = d.bo; synchroniser(); }
   if (el && (d.bstyle || d.bcoul || d.btoile)) { memoriser(); if (d.bstyle) { el.style = d.bstyle; if (!COULEURS_PERGOLA[d.bstyle === "bois" ? "bois" : "alu"].some(c => c[0] === el.coul)) el.coul = d.bstyle === "bois" ? "brun" : "anthracite"; } if (d.bcoul) el.coul = d.bcoul; if (d.btoile) el.toile = d.btoile; synchroniser(); }
@@ -1762,7 +1762,7 @@ function tournerElement(i, pas = 90) {
   synchroniser();
 }
 function retailler(i, k, v) {
-  const o = etat.elements[i], d = ELEMENTS[o.type], lim = { l: [0.05, 30], p: [0.05, 30], ht: [0.2, 6], hb: [0.2, 2.5], rot: [-360, 360] }[k];
+  const o = etat.elements[i], d = ELEMENTS[o.type], lim = { l: [0.05, 30], p: [0.05, 30], ht: o.type === "pergolabox" ? [2, 3.5] : [0.2, 6], hb: [0.2, 2.5], rot: [-360, 360] }[k];
   if (!Number.isFinite(v) || v < lim[0] || v > lim[1]) { toast(`Valeur attendue entre ${fr(lim[0], 2)} et ${fr(lim[1], 0)}.`); afficherListes(); return false; }
   memoriser(); const avant = { ...o };
   o[k] = k === "rot" ? mod(Math.round(v), 360) : Math.round(v * 100) / 100;
@@ -2014,7 +2014,7 @@ function afficherListes() {
   const bas = (k, a, b, v) => `<button type="button" class="bascule" data-bas="${k}" aria-pressed="${!!v}"><b>${a}</b><small>${b}</small></button>`;
   $("liste-elements").innerHTML = etat.elements.map((o, i) => {
     const d = ELEMENTS[o.type], e = o.type === "escalier" ? infoEscalier(o) : null;
-    return `<div class="carte-el" data-i="${i}" aria-current="${i === choix}"><div class="el-tete"><span><b>${d.nom}</b>${e ? `<small>${e.nb} marches de ${cm1(e.r)}, ${cm(e.g)} de profondeur</small>` : ""}</span><span class="el-btns"><button type="button" data-rot="${i}" aria-label="Tourner">↻</button><button type="button" data-sup="${i}" aria-label="Retirer">×</button></span></div>${i !== choix ? "" : `<div class="dims">${d.rond ? champ("l", "Diamètre (m)", o.l) : e ? champ("l", "Largeur (m)", o.l) + champ("ht", "Hauteur (m)", o.ht) : champ("l", "Longueur (m)", o.l) + champ("p", "Largeur (m)", o.p)}${d.rond ? "" : champ("rot", "Angle (°)", o.rot, 0)}${o.horssol ? champ("hb", "Bord (m)", o.hb) : ""}</div>${d.margelle ? bas("margelle", "Margelles en lames", "Une lame autour du bassin", o.margelle) : ""}${o.type === "piscine" || o.type === "piscineronde" ? bas("horssol", "Bassin hors-sol", "Habille les parois avec les mêmes lames", o.horssol) : ""}${e ? bas("revetir", "Revêtir les marches", "Ajoute marches, contremarches et nez de marche au métré", o.revetir) : ""}`}</div>`;
+    return `<div class="carte-el" data-i="${i}" aria-current="${i === choix}"><div class="el-tete"><span><b>${d.nom}</b>${e ? `<small>${e.nb} marches de ${cm1(e.r)}, ${cm(e.g)} de profondeur</small>` : ""}</span><span class="el-btns"><button type="button" data-rot="${i}" aria-label="Tourner">↻</button><button type="button" data-sup="${i}" aria-label="Retirer">×</button></span></div>${i !== choix ? "" : `<div class="dims">${d.rond ? champ("l", "Diamètre (m)", o.l) : e ? champ("l", "Largeur (m)", o.l) + champ("ht", "Hauteur (m)", o.ht) : champ("l", "Longueur (m)", o.l) + champ("p", "Largeur (m)", o.p)}${o.type === "pergolabox" ? champ("ht", "Hauteur (m)", o.ht || d.h) : ""}${d.rond ? "" : champ("rot", "Angle (°)", o.rot, 0)}${o.horssol ? champ("hb", "Bord (m)", o.hb) : ""}</div>${d.margelle ? bas("margelle", "Margelles en lames", "Une lame autour du bassin", o.margelle) : ""}${o.type === "piscine" || o.type === "piscineronde" ? bas("horssol", "Bassin hors-sol", "Habille les parois avec les mêmes lames", o.horssol) : ""}${e ? bas("revetir", "Revêtir les marches", "Ajoute marches, contremarches et nez de marche au métré", o.revetir) : ""}`}</div>`;
   }).join("");
 }
 function afficherAjouts() {
@@ -2163,7 +2163,7 @@ function ajouterElement(e) {
   const t = b.dataset.t, d = ELEMENTS[t], bb = boiteEnglobante(etat.poly), o = { type: t, x: arrondi((bb.umin + bb.umax) / 2), y: arrondi((bb.vmin + bb.vmax) / 2), l: d.l, p: d.p, rot: mod(Math.round(angleTerrasse()), 360) };
   if (t === "escalier") { o.ht = 2.7; o.revetir = false; o.p = infoEscalier(o).course; }
   if (d.margelle) o.margelle = true;
-  if (t === "pergolabox") { o.style = "bois"; o.coul = "brun"; o.toile = "ecru"; }
+  if (t === "pergolabox") { o.style = "bois"; o.coul = "brun"; o.toile = "ecru"; o.ht = 2.5; }
   if (d.decor) { const n = etat.elements.filter(q => ELEMENTS[q.type].decor).length; o.y = arrondi(bb.vmax + 1.5 + o.p / 2 + (n % 3) * 1.5); o.x = arrondi(o.x + ((n % 3) - 1) * 2.5); }
   if (d.meuble) { const n = etat.elements.filter(q => ELEMENTS[q.type].meuble).length; o.x = arrondi(o.x + ((n % 3) - 1) * 0.7); o.y = arrondi(o.y + (Math.floor(n / 3) % 3 - 1) * 0.7); }
   if (t === "piscine" || t === "piscineronde") { o.horssol = false; o.hb = 1.2; }
@@ -2567,7 +2567,7 @@ function objetElement(o, m) {
   } else if (o.type === "regard") {
     B(o.l, 0.02, o.p, 0, -0.01, 0, M(0x8D8D89));
   } else if (d.meuble) {
-    const t = o.type, cadre = M(0x3A3D3F, 0.5), coussin = M(0xE6E0D4, 0.95), boisM = M(0xA98255, 0.7), L = o.l, P = o.p, H = d.h;
+    const t = o.type, cadre = M(0x3A3D3F, 0.5), coussin = M(0xE6E0D4, 0.95), boisM = M(0xA98255, 0.7), L = o.l, P = o.p, H = t === "pergolabox" && o.ht ? o.ht : d.h;
     const chaise = (x, z, r = 0, w = 0.42) => { const c = new THREE.Group(); const q = (a, b, e, px, py, pz) => { const s = new THREE.Mesh(new THREE.BoxGeometry(a, b, e), cadre); s.position.set(px, py, pz); s.castShadow = true; c.add(s); }; q(w, 0.05, w, 0, 0.45, 0); q(w, 0.42, 0.04, 0, 0.66, -w / 2 + 0.02); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) q(0.03, 0.44, 0.03, a * (w / 2 - 0.03), 0.22, b * (w / 2 - 0.03)); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); };
     if (t === "salon") { B(L, 0.3, 0.8, 0, 0.15, -P / 2 + 0.4, cadre); B(0.8, 0.3, P - 0.8, -L / 2 + 0.4, 0.15, 0.4, cadre); B(L - 0.1, 0.14, 0.7, 0, 0.37, -P / 2 + 0.4, coussin); B(0.7, 0.14, P - 0.9, -L / 2 + 0.4, 0.37, 0.4, coussin); B(L, 0.42, 0.14, 0, 0.5, -P / 2 + 0.07, cadre); B(0.14, 0.42, P - 0.14, -L / 2 + 0.07, 0.5, 0.07, cadre); B(L / 2 - 0.2, 0.06, 0.7, L / 4, 0.34, 0.3, boisM); }
     else if (t === "repas" || t === "repas8") { const n = t === "repas" ? 3 : 4; B(L - 0.1, 0.05, 0.96, 0, 0.75, 0, boisM); for (const [x, z] of [[-L / 2 + 0.15, -0.4], [L / 2 - 0.15, -0.4], [-L / 2 + 0.15, 0.4], [L / 2 - 0.15, 0.4]]) B(0.06, 0.74, 0.06, x, 0.37, z, cadre); for (let i = 0; i < n; i++) { const x = -L / 2 + 0.46 + (L - 0.92) * (i / (n - 1)); chaise(x, -P / 2 + 0.21, 0); chaise(x, P / 2 - 0.21, Math.PI); } }
