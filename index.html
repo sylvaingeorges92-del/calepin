@@ -857,6 +857,23 @@ function ancrage(o) {
   const l = Math.min(o.l, m.len), demi = Math.min(0.5, l / 2 / m.len), t = clamp(m.t, demi, 1 - demi);
   return { ...m, t, l, cx: m.A.x + m.ux * t * m.len, cy: m.A.y + m.uy * t * m.len };
 }
+/* Butée magnétique le long d'un bord : une ouverture (ou une marche) glisse jusqu'à toucher sa voisine et s'y arrête, sans la chevaucher.
+   ref = position de référence sur le bord (centre au début du geste) pour ne pas traverser une voisine d'un coup. */
+function caler(liste, i, ref, retrecir = false) {
+  const o = etat[liste][i]; if (!o) return true;
+  const a = ancrage(o), len = a.len, mini = liste === "ouvertures" ? 0.4 : 0.6;
+  const occ = etat[liste].map((q, k) => k === i ? null : ancrage(q)).filter(b => b && b.i === a.i).map(b => [b.t * b.len - b.l / 2, b.t * b.len + b.l / 2]).sort((p, q) => p[0] - q[0]);
+  const trous = []; let x = 0; for (const [s0, s1] of occ) { if (s0 > x + 1e-6) trous.push([x, s0]); x = Math.max(x, s1); } if (x < len - 1e-6) trous.push([x, len]);
+  if (!trous.length) return false;
+  const c0 = ref !== undefined && ref.bord === a.i ? ref.c : a.t * len;
+  const trou = trous.find(([s0, s1]) => c0 >= s0 - 1e-6 && c0 <= s1 + 1e-6) || trous.reduce((m, t) => !m || Math.min(Math.abs(t[0] - c0), Math.abs(t[1] - c0)) < Math.min(Math.abs(m[0] - c0), Math.abs(m[1] - c0)) ? t : m, null);
+  const lMax = Math.round((trou[1] - trou[0]) * 100) / 100;
+  if (lMax < mini || (!retrecir && lMax < o.l - 1e-6)) return false;
+  if (o.l > lMax) o.l = lMax;
+  const c = clamp(a.t * len, trou[0] + o.l / 2, trou[1] - o.l / 2);
+  o.x = a.A.x + a.ux * c; o.y = a.A.y + a.uy * c;
+  return true;
+}
 function terrain() {
   const a = etat.azimut * Math.PI / 180, d = { x: Math.cos(a), y: Math.sin(a) }, p = ext() ? etat.pente / 100 : 0, m = Math.min(...etat.poly.map(q => q.x * d.x + q.y * d.y));
   return { p, d, sol: P => -p * (P.x * d.x + P.y * d.y - m) };
@@ -1672,8 +1689,8 @@ scene.addEventListener("pointerdown", e => {
   if (d.b !== undefined) {
     const i = +d.b;
     if (outil === "ajouter") insererPoint(i, m);
-    else if (outil === "marche") { memoriser(); const b = bords()[i], l = Math.min(1.2, b.len); etat.marches.push({ x: m.x, y: m.y, l }); choisirOutil("ajuster"); synchroniser(); cadrer(); }
-    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); choisir("ouvertures", etat.ouvertures.length - 1); choisirOutil("ajuster"); synchroniser(); toast(ext() ? "Ouverture posée sur le mur de la maison. Glissez-la le long du bord." : "Ouverture posée. Glissez-la le long du mur."); }
+    else if (outil === "marche") { memoriser(); const b = bords()[i], l = Math.min(1.2, b.len); etat.marches.push({ x: m.x, y: m.y, l }); if (!caler("marches", etat.marches.length - 1)) { etat.marches.pop(); passe.pop(); boutonsHistorique(); toast("Pas assez de place sur ce bord pour une autre marche."); } else { choisir("marches", etat.marches.length - 1); choisirOutil("ajuster"); synchroniser(); cadrer(); } }
+    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); if (!caler("ouvertures", etat.ouvertures.length - 1)) { etat.ouvertures.pop(); passe.pop(); boutonsHistorique(); toast("Pas assez de place sur ce mur entre les ouvertures existantes."); } else { choisir("ouvertures", etat.ouvertures.length - 1); choisirOutil("ajuster"); synchroniser(); toast(ext() ? "Ouverture posée sur le mur de la maison. Glissez-la le long du bord." : "Ouverture posée. Glissez-la le long du mur."); } }
     else if (outil === "zone") ajouterZone(i, m);
     else if (outil === "piece") ajouterPiece(i, m);
     else if (outil === "renfoncement") decrocher(i, m, 1.2, -0.6, "Renfoncement");
@@ -1691,8 +1708,8 @@ scene.addEventListener("pointerdown", e => {
   if (d.e !== undefined) { geste = { type: "bord", i: +d.e, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
   if (d.rot !== undefined) { const bb = boiteEnglobante(etat.poly), ce = { x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }; geste = { type: "rotation", ce, a0: Math.atan2(m.y - ce.y, m.x - ce.x), base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), rot0: etat.rotation || 0, ok: false }; return; }
   if (d.t !== undefined) { geste = { type: "bloc", base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), m, ok: false }; return; }
-  if (d.m !== undefined) { const o = etat.marches[+d.m]; choisir("marches", +d.m); geste = { type: "ancre", liste: "marches", i: +d.m, dx: o.x - m.x, dy: o.y - m.y, ok: false }; afficherListes(); planifier(); return; }
-  if (d.p !== undefined) { const o = etat.ouvertures[+d.p]; choisir("ouvertures", +d.p); geste = { type: "ancre", liste: "ouvertures", i: +d.p, dx: o.x - m.x, dy: o.y - m.y, ok: false }; afficherListes(); planifier(); return; }
+  if (d.m !== undefined) { const o = etat.marches[+d.m], a = ancrage(o); choisir("marches", +d.m); geste = { type: "ancre", liste: "marches", i: +d.m, dx: o.x - m.x, dy: o.y - m.y, ref: { bord: a.i, c: a.t * a.len }, ok: false }; afficherListes(); planifier(); return; }
+  if (d.p !== undefined) { const o = etat.ouvertures[+d.p], a = ancrage(o); choisir("ouvertures", +d.p); geste = { type: "ancre", liste: "ouvertures", i: +d.p, dx: o.x - m.x, dy: o.y - m.y, ref: { bord: a.i, c: a.t * a.len }, ok: false }; afficherListes(); planifier(); return; }
   if (choix >= 0 || choixO >= 0 || choixM >= 0) { choisir("", -1); afficherListes(); planifier(); }
   geste = { type: "pan", x: q.x, y: q.y, ox: cam.ox, oy: cam.oy };
 });
@@ -1701,8 +1718,8 @@ $("bulle").addEventListener("pointerdown", e => {
   const b = e.target.closest("[data-bdep]"); if (!b) return;
   e.preventDefault(); const q = pos(e), m = monde(q.x, q.y); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
   if (etat.elements[choix]) { const o = etat.elements[choix]; geste = { type: "element", i: choix, dx: o.x - m.x, dy: o.y - m.y, lx: o.x, ly: o.y, ok: false }; }
-  else if (etat.ouvertures[choixO]) { const o = etat.ouvertures[choixO]; geste = { type: "ancre", liste: "ouvertures", i: choixO, dx: o.x - m.x, dy: o.y - m.y, ok: false }; }
-  else if (etat.marches[choixM]) { const o = etat.marches[choixM]; geste = { type: "ancre", liste: "marches", i: choixM, dx: o.x - m.x, dy: o.y - m.y, ok: false }; }
+  else if (etat.ouvertures[choixO]) { const o = etat.ouvertures[choixO], a = ancrage(o); geste = { type: "ancre", liste: "ouvertures", i: choixO, dx: o.x - m.x, dy: o.y - m.y, ref: { bord: a.i, c: a.t * a.len }, ok: false }; }
+  else if (etat.marches[choixM]) { const o = etat.marches[choixM], a = ancrage(o); geste = { type: "ancre", liste: "marches", i: choixM, dx: o.x - m.x, dy: o.y - m.y, ref: { bord: a.i, c: a.t * a.len }, ok: false }; }
 });
 $("bulle").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return; const d = b.dataset;
@@ -1710,7 +1727,7 @@ $("bulle").addEventListener("click", e => {
   if (d.bsup) { memoriser(); if (el) etat.elements.splice(choix, 1); else if (ouv) etat.ouvertures.splice(choixO, 1); else if (mar) etat.marches.splice(choixM, 1); choisir("", -1); synchroniser(); return; }
   if (d.brot && el) { tournerElement(choix); return; }
   if ((d.bl || d.bp) && el) { const k = d.bl ? "l" : "p", v = Math.round((el[k] + (+(d.bl || d.bp)) * 0.1) * 100) / 100; retailler(choix, k, v); return; }
-  if (d.bw && (ouv || mar)) { memoriser(); const o = ouv || mar, [mini, maxi] = ouv ? [0.4, 8] : [0.6, 6]; o.l = clamp(Math.round((o.l + (+d.bw) * 0.1) * 100) / 100, mini, maxi); synchroniser(); return; }
+  if (d.bw && (ouv || mar)) { memoriser(); const o = ouv || mar, [mini, maxi] = ouv ? [0.4, 8] : [0.6, 6], l0 = o.l; o.l = clamp(Math.round((o.l + (+d.bw) * 0.1) * 100) / 100, mini, maxi); caler(ouv ? "ouvertures" : "marches", ouv ? choixO : choixM, undefined, true); if (o.l < l0 + 1e-6 && +d.bw > 0) toast("Butée : la voisine ou le bout du mur est atteint."); synchroniser(); return; }
   if (d.bo && ouv) { memoriser(); ouv.type = d.bo; synchroniser(); }
 });
 const angleTerrasse = () => ext() ? (etat.rotation || 0) : 0;
@@ -1736,7 +1753,7 @@ scene.addEventListener("pointermove", e => {
   if (geste.type === "pince" && pointeurs.size === 2) { const [a, b] = [...pointeurs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), z = clamp(geste.z * d / geste.d, 6, 400); cam.z = z; cam.ox = (a.x + b.x) / 2 - (geste.cx - geste.ox) * z / geste.z; cam.oy = (a.y + b.y) / 2 - (geste.cy - geste.oy) * z / geste.z; planifier(); return; }
   if (geste.type === "pan" || geste.type === "room") { cam.ox = geste.ox + q.x - geste.x; cam.oy = geste.oy + q.y - geste.y; planifier(); return; }
   const m = monde(q.x, q.y);
-  if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { o.x = m.x + (geste.dx || 0); o.y = m.y + (geste.dy || 0); maj(); } return; }
+  if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { const x0 = o.x, y0 = o.y; o.x = m.x + (geste.dx || 0); o.y = m.y + (geste.dy || 0); if (!caler(geste.liste, geste.i, geste.ref)) { o.x = x0; o.y = y0; } else { const a = ancrage(o); if (geste.ref && a.i !== geste.ref.bord) geste.ref = { bord: a.i, c: a.t * a.len }; } maj(); } return; }
   if (geste.type === "element") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (o) { o.x = arrondi(m.x + geste.dx); o.y = arrondi(m.y + geste.dy); aimanter(o); if (ecarter(o, geste.i)) { geste.lx = o.x; geste.ly = o.y; } else { o.x = geste.lx; o.y = geste.ly; } maj(); } return; }
   if (geste.type === "rot-el") {
     if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (!o) return;
@@ -1785,6 +1802,7 @@ function fixerCoteOuv(e, v) {
   memoriser();
   if (e.k === 1) o.l = clamp(v, 0.4, Math.min(8, a.len));
   else { const l = a.l, d0 = e.k === 0 ? clamp(v, 0, a.len - l) : clamp(a.len - v - l, 0, a.len - l), c = d0 + l / 2; o.x = a.A.x + a.ux * c; o.y = a.A.y + a.uy * c; }
+  caler("ouvertures", e.ouv, undefined, true);
   synchroniser();
 }
 function fermerEdition(valider) { const ed = $("cote-edit"); if (edition === null) return; const i = edition; edition = null; ed.hidden = true; if (valider) { const v = parseFloat(ed.value.replace(",", ".")); if (Number.isFinite(v) && v >= 0) { if (typeof i === "object") fixerCoteOuv(i, Math.round(v * 100) / 100); else if (v > 0) fixerLongueur(i, Math.round(v * 100) / 100); } } }
@@ -2156,7 +2174,7 @@ function listeEdition(id, cle, mini, maxi) {
     if (!b) { if (it) { choisir(cle, +it.dataset.sel); afficherListes(); planifier(); } return; }
     memoriser();
     if (b.dataset.sup !== undefined) { etat[cle].splice(+b.dataset.sup, 1); choisir("", -1); }
-    else { const i = +(b.dataset.plus ?? b.dataset.moins), o = etat[cle][i], pasL = 0.1; o.l = clamp(Math.round((o.l + (b.dataset.plus !== undefined ? pasL : -pasL)) * 100) / 100, mini, maxi); choisir(cle, i); }
+    else { const i = +(b.dataset.plus ?? b.dataset.moins), o = etat[cle][i], pasL = 0.1; o.l = clamp(Math.round((o.l + (b.dataset.plus !== undefined ? pasL : -pasL)) * 100) / 100, mini, maxi); caler(cle, i, undefined, true); choisir(cle, i); }
     synchroniser();
   });
 }
