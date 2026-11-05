@@ -1900,9 +1900,9 @@ function decorReel(m, t, groupe) {
   if (!f.texLoin) {
     const fabrique = (cv) => { const tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding; tx.anisotropy = 8; return tx; };
     const portee = Math.round(64 / f.m), x0 = f.l / 2 - portee, y0 = f.h / 2 - portee, c = document.createElement("canvas"); c.width = c.height = 2048;
-    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(f.image, x0, y0, portee * 2, portee * 2, 0, 0, 2048, 2048);
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.filter = "contrast(1.1) saturate(1.15)"; g.drawImage(f.image, x0, y0, portee * 2, portee * 2, 0, 0, 2048, 2048); g.filter = "none";
     const b = document.createElement("canvas"); b.width = b.height = 256; const gb = b.getContext("2d"), ra = hasard(5), im = gb.createImageData(256, 256); for (let i = 0; i < im.data.length; i += 4) { const v = 96 + ra() * 64; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } gb.putImageData(im, 0, 0);
-    g.globalCompositeOperation = "overlay"; g.globalAlpha = 0.55; g.fillStyle = g.createPattern(b, "repeat"); g.fillRect(0, 0, 2048, 2048);
+    g.globalCompositeOperation = "overlay"; g.globalAlpha = 0.14; g.fillStyle = g.createPattern(b, "repeat"); g.fillRect(0, 0, 2048, 2048);
     f.texPres = fabrique(c); f.texLoin = fabrique(f.image); f.prox = [x0, y0, x0 + portee * 2, y0 + portee * 2];
   }
   const P = (px, py, dy) => { const q = pointFond(px, py); return [q.x - m.cx, t.sol(q) + dy, q.y - m.cz]; };
@@ -1927,8 +1927,17 @@ function decorReel(m, t, groupe) {
   }
   const liste = etat.envArbres ? f.arbres.map(a => ({ a, q: pointFond(a.px, a.py) })).filter(({ q }) => !dansPoly(q, etat.poly) && !etat.elements.some(o => ELEMENTS[o.type].eau && dansPoly(q, contour(o, 1)))) : [];
   if (liste.length) {
-    const inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshStandardMaterial({ roughness: 1 }), liste.length), mat = new THREE.Matrix4(), col = new THREE.Color(), infos = [];
-    liste.forEach(({ a, q }, i) => { const h = 1.3, x = q.x - m.cx, z = q.y - m.cz, y = t.sol(q) + a.r * h * 0.92; mat.makeScale(a.r, a.r * h, a.r); mat.setPosition(x, y, z); inst.setMatrixAt(i, mat); col.setRGB(a.c[0] / 255 * 1.2, a.c[1] / 255 * 1.2, a.c[2] / 255 * 1.2).convertSRGBToLinear(); inst.setColorAt(i, col); infos.push({ x, z, r: a.r, top: y + a.r * h, m: mat.clone(), v: false }); });
+    const inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), liste.length * 4), mat = new THREE.Matrix4(), col = new THREE.Color(), infos = [], ra = hasard(11);
+    let i = 0;
+    for (const { a, q } of liste) {
+      const R0 = a.r * 0.8, sol = t.sol(q), x0 = q.x - m.cx, z0 = q.y - m.cz, fin = 0.62 + ra() * 0.3;
+      for (const [dx, dy, dz, k] of [[0, 1.05, 0, 0.82], [0.48, 0.7, 0.2, 0.62], [-0.42, 0.75, 0.3, 0.6], [0.05, 0.72, -0.5, 0.64]]) {
+        const r1 = R0 * k, x = x0 + dx * R0, z = z0 + dz * R0, y = sol + R0 * (dy + 0.75);
+        mat.makeScale(r1, r1 * 1.05, r1); mat.setPosition(x, y, z); inst.setMatrixAt(i, mat);
+        col.setRGB(a.c[0] / 255 * 0.85 * fin + 0.03, a.c[1] / 255 * 1.2 * fin + 0.05, a.c[2] / 255 * 0.65 * fin).convertSRGBToLinear(); inst.setColorAt(i, col);
+        infos.push({ x, z, r: r1, top: y + r1, m: mat.clone(), v: false }); i++;
+      }
+    }
     inst.castShadow = true; groupe.add(inst); T.arbres = { inst, infos };
   }
 }
@@ -1966,11 +1975,11 @@ function reconstruire3D() {
   const ex = ext(), formes = etat.pieces.map((_, i) => polyDe(i)), bG = boiteEnglobante(formes.flat()), centre = { x: (bG.umin + bG.umax) / 2, z: (bG.vmin + bG.vmax) / 2 };
   vider(T.groupe); T.occ = []; T.arbres = null;
   const reel = !!(ex && fond && fond.aerien);
-  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null;
+  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null; T.brume.near = reel ? 90 : 26; T.brume.far = reel ? 240 : 85;
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
   const cle = `${etat.lieu}|${Math.round(taille * 2)}|${reel}`;
-  if (cle !== T.cle) { T.cle = cle; T.rayon = (reel ? Math.max(19, taille * 2.6) : Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5)) * Math.max(1, 1.35 / T.camera.aspect); T.phi = reel ? 0.92 : ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
+  if (cle !== T.cle) { T.cle = cle; T.rayon = (reel ? Math.max(25, taille * 3) : Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5)) * Math.max(1, 1.35 / T.camera.aspect); T.phi = reel ? 0.86 : ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
   const d = T.sol.shadow.camera, e = Math.max(taille + 8, reel ? 34 : 0); d.left = -e; d.right = e; d.top = e; d.bottom = -e; d.near = 0.5; d.far = 50; d.updateProjectionMatrix();
 }
 function construirePiece(c, m, ip, formes) {
