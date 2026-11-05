@@ -215,6 +215,8 @@ h2, h3, p { margin: 0; }
 .autre-piece { fill: transparent; cursor: pointer; }
 [data-room] { cursor: pointer; }
 .sel { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 6 4; }
+[data-rot] { cursor: grab; }
+.rot-lien { stroke: #16201B; stroke-width: 2; stroke-dasharray: 4 4; fill: none; }
 .sombre .sel { stroke: #0E6B5B; }
 .mini { fill: #16201B; cursor: pointer; }
 .mini-t { fill: #fff; font: 700 15px var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
@@ -320,7 +322,7 @@ h2, h3, p { margin: 0; }
         <div class="curseur"><label for="fond-opacite">Visibilité</label><input id="fond-opacite" type="range" min="20" max="100" value="100"><output id="o-opacite">100 %</output></div>
         <div class="curseur"><label for="fond-angle">Orientation</label><input id="fond-angle" type="range" min="-90" max="90" value="0"><output id="o-angle">0°</output></div>
         <button class="lien" id="fond-retirer" type="button">Retirer ce fond</button>
-        <p class="aide">Tournez l’image pour l’aligner, puis placez la forme avec le point central.</p>
+        <p class="aide">Ce curseur tourne la photo. Pour tourner la terrasse elle-même, voyez l’étape Forme.</p>
       </div>
     </section>
 
@@ -347,6 +349,11 @@ h2, h3, p { margin: 0; }
       </div>
       <p class="aide" id="aide-outil"></p>
       <button class="bascule" id="angles" type="button" aria-pressed="true" style="margin-top:10px"><b>Garder les angles droits</b><small>Les côtés voisins suivent le point déplacé</small></button>
+      <div id="bloc-rotation" hidden>
+        <h3>Orientation de la terrasse</h3>
+        <div class="curseur" style="margin-top:0"><label for="rotation">Tourner</label><input id="rotation" type="range" min="-180" max="180" step="1" value="0"><output id="o-rotation">0°</output></div>
+        <p class="aide">La photo reste fixe : la terrasse tourne avec ses éléments. Sur le plan, la poignée ronde fait la même chose.</p>
+      </div>
     </section>
 
     <section data-etape="elements" hidden>
@@ -369,6 +376,9 @@ h2, h3, p { margin: 0; }
       <h3 id="titre-elements"></h3>
       <div class="ajouts" id="ajout-elements"></div>
       <div id="bloc-decor">
+        <h3>Mobilier et habillage</h3>
+        <div class="ajouts" id="ajout-meubles"></div>
+        <p class="aide">Pour vérifier la place et le rendu. Sans effet sur le métré.</p>
         <h3>Autour de la terrasse</h3>
         <div class="ajouts" id="ajout-decor"></div>
         <div class="cartes" id="bloc-reel" style="margin-top:8px" hidden>
@@ -561,6 +571,29 @@ const ELEMENTS = {
   abri: { lieu: "exterieur", nom: "Abri de jardin", l: 3, p: 2, h: 2.3, decor: 1, coul: "#9C7B57" },
   massif: { lieu: "exterieur", nom: "Massif fleuri", l: 2.5, p: 1, h: 0.35, decor: 1, coul: "#7E9B55" },
   allee: { lieu: "exterieur", nom: "Allée", l: 1.2, p: 5, h: 0.02, decor: 1, coul: "#C9C2B2" },
+  salon: { lieu: "exterieur", nom: "Salon de jardin", l: 2.4, p: 2.4, h: 0.65, meuble: 1, coul: "#D9D2C4" },
+  repas: { lieu: "exterieur", nom: "Table 6 personnes", l: 2.2, p: 1.8, h: 0.75, meuble: 1, coul: "#B5916A" },
+  repas8: { lieu: "exterieur", nom: "Table 8 personnes", l: 2.9, p: 1.9, h: 0.75, meuble: 1, coul: "#B5916A" },
+  bistrot: { lieu: "exterieur", nom: "Table bistrot", l: 1.1, p: 1.1, h: 0.72, meuble: 1, coul: "#3A3D3F" },
+  chaise: { lieu: "exterieur", nom: "Chaise", l: 0.5, p: 0.55, h: 0.9, meuble: 1, coul: "#3A3D3F" },
+  fauteuil: { lieu: "exterieur", nom: "Fauteuil", l: 0.8, p: 0.8, h: 0.75, meuble: 1, coul: "#D9D2C4" },
+  bain: { lieu: "exterieur", nom: "Bain de soleil", l: 0.75, p: 1.95, h: 0.35, meuble: 1, coul: "#D9D2C4" },
+  banc: { lieu: "exterieur", nom: "Banc", l: 1.6, p: 0.45, h: 0.45, meuble: 1, coul: "#B5916A" },
+  parasol: { lieu: "exterieur", nom: "Parasol", l: 3, p: 3, h: 2.5, meuble: 1, rond: 1, coul: "#E6DCC7" },
+  barbecue: { lieu: "exterieur", nom: "Barbecue", l: 1.3, p: 0.65, h: 0.95, meuble: 1, coul: "#1E1F20" },
+  plancha: { lieu: "exterieur", nom: "Plancha", l: 0.9, p: 0.55, h: 0.9, meuble: 1, coul: "#4A4D50" },
+  cuisineext: { lieu: "exterieur", nom: "Cuisine d’été", l: 2.4, p: 0.65, h: 0.9, meuble: 1, coul: "#8A8D90" },
+  brasero: { lieu: "exterieur", nom: "Brasero", l: 0.8, p: 0.8, h: 0.5, meuble: 1, rond: 1, coul: "#2E2A27" },
+  jardiniere: { lieu: "exterieur", nom: "Jardinière", l: 1.2, p: 0.45, h: 0.5, meuble: 1, coul: "#4A3F36" },
+  pot: { lieu: "exterieur", nom: "Pot avec plante", l: 0.6, p: 0.6, h: 0.6, meuble: 1, rond: 1, coul: "#6F5B4A" },
+  spaposable: { lieu: "exterieur", nom: "Spa posé", l: 2.1, p: 2.1, h: 0.9, meuble: 1, coul: "#54493F" },
+  hamac: { lieu: "exterieur", nom: "Hamac sur pied", l: 3, p: 1.2, h: 0.9, meuble: 1, coul: "#C9A66B" },
+  balancelle: { lieu: "exterieur", nom: "Balancelle", l: 1.9, p: 1.3, h: 1.8, meuble: 1, coul: "#3A3D3F" },
+  pergolabox: { lieu: "exterieur", nom: "Pergola", l: 3.5, p: 3, h: 2.5, meuble: 1, coul: "#5A4632" },
+  voile: { lieu: "exterieur", nom: "Voile d’ombrage", l: 3.6, p: 3.6, h: 2.6, meuble: 1, coul: "#E9E3D5" },
+  lanterne: { lieu: "exterieur", nom: "Lanterne", l: 0.25, p: 0.25, h: 0.4, meuble: 1, rond: 1, coul: "#2E2A27" },
+  douche: { lieu: "exterieur", nom: "Douche solaire", l: 0.4, p: 0.4, h: 2.2, meuble: 1, coul: "#9A9A96" },
+  velo: { lieu: "exterieur", nom: "Range-vélos", l: 1.8, p: 0.6, h: 1, meuble: 1, coul: "#6B6F6C" },
   escalier: { lieu: "interieur", nom: "Escalier", l: 0.9, p: 3, coul: "#D8D2C6" },
   poteau: { lieu: "interieur", nom: "Poteau", l: 0.3, p: 0.3, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
   poteaurond: { lieu: "interieur", nom: "Poteau rond", l: 0.3, p: 0.3, h: 2.5, rond: 1, plinthe: 1, coul: "#BDB8AE" },
@@ -579,7 +612,7 @@ const etat = {
   hauteur: 15, pente: 0, azimut: 90, marches: [],
   support: "chape", chauffage: false, humide: false, ecart: 0, ouvertures: [], elements: [],
   produit: "pin", dims: {}, angle: 0, motif: "aleatoire", depart: "fin", graine: 7, marge: 5,
-  cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true
+  cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true, rotation: 0
 };
 let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1;
 let cam = { z: 60, ox: 0, oy: 0 }, calepin = null, fond = null, mode = null, calibration = [];
@@ -687,7 +720,7 @@ function contactMur(o) {
   return tot;
 }
 function aimanter(o) {
-  if (ELEMENTS[o.type].decor) return;
+  if (ELEMENTS[o.type].decor || ELEMENTS[o.type].meuble) return;
   const tol = 12 / cam.z;
   for (const b of bords()) {
     const pts = contour(o), rs = pts.map(P => (P.x - b.A.x) * b.nx + (P.y - b.A.y) * b.ny), ss = pts.map(P => (P.x - b.A.x) * b.ux + (P.y - b.A.y) * b.uy), r = Math.max(...rs);
@@ -727,14 +760,14 @@ function marcheInfo(o) {
 function calepiner() {
   const p = produit(), d = dim(p), estExt = ext(), carrelage = p.fam === "carrelage";
   const Lm = d.L / 1000, w = d.l / 1000, jeu = d.j / 1000, pas = w + jeu, ep = d.e / 1000;
-  const th = etat.angle * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
+  const th = (etat.angle + (estExt ? etat.rotation || 0 : 0)) * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
   const versLocal = q => ({ u: q.x * co + q.y * si, v: -q.x * si + q.y * co }), versMonde = (u, v) => ({ x: u * co - v * si, y: u * si + v * co });
   const bbP = boiteEnglobante(etat.poly), maxDim = Math.max(bbP.umax - bbP.umin, bbP.vmax - bbP.vmin);
   const jeuMur = estExt ? 0 : p.fam === "parquet" ? Math.max(0.008, 0.0015 * maxDim) : 0.005;
   const retrait = estExt ? (etat.cadre ? w + jeu : 0) : jeuMur;
   const polyPose = retrait ? decaler(etat.poly, retrait) : etat.poly;
   const loc = polyPose.map(versLocal), bb = boiteEnglobante(loc, "u", "v"), locT = etat.poly.map(versLocal), bbT = boiteEnglobante(locT, "u", "v");
-  const trousM = etat.elements.filter(o => !ELEMENTS[o.type].decor).map(o => contour(o, margeEl(o, pas))), trous = trousM.map(m => m.map(versLocal)), contours = [loc, ...trous], contoursT = [locT, ...trous];
+  const trousM = etat.elements.filter(o => !ELEMENTS[o.type].decor && !ELEMENTS[o.type].meuble).map(o => contour(o, margeEl(o, pas))), trous = trousM.map(m => m.map(versLocal)), contours = [loc, ...trous], contoursT = [locT, ...trous];
   const r = hasard(etat.graine * 131 + 3), rangs = [], module = Lm + jeu, mini = carrelage ? Lm / 3 : Math.min(0.3, Lm / 3);
   const e = estExt ? (p.entraxe || 0.5) : 0, mL = SECTION.l, grille0 = bbT.umin + mL / 2, k = estExt ? Math.max(2, Math.floor(Lm / e + EPS)) : 0;
   const baseU = carrelage ? origine(bb.umin, bb.umax, module, Lm, etat.depart) : bb.umin, phi = origine(bb.vmin, bb.vmax, pas, w, etat.depart);
@@ -839,7 +872,7 @@ function calepiner() {
   const brut = carrelage ? longueurs.length : emballer([...longueurs, ...lgMarches], Lm);
   const nbPieces = Math.ceil(Math.max(brut, (surfaceNette + marches.reduce((s, m) => s + m.nb * m.g * m.l, 0)) / unite * marge));
   const t = terrain(), hT = etat.hauteur / 100, hs = etat.poly.map(q => hT - t.sol(q));
-  const lots = etat.elements.filter(o => !ELEMENTS[o.type].decor).map(o => {
+  const lots = etat.elements.filter(o => !ELEMENTS[o.type].decor && !ELEMENTS[o.type].meuble).map(o => {
     const el = ELEMENTS[o.type], x = { o, d: el };
     if (o.margelle) { const c0 = contour(o, o.horssol ? 0.04 + w / 2 : w / 2), lg = c0.map((q, i) => { const s = c0[(i + 1) % c0.length]; return Math.hypot(s.x - q.x, s.y - q.y); }); x.mlMargelle = lg.reduce((s, l) => s + l, 0); x.nbMargelle = el.rond ? Math.ceil(x.mlMargelle / Lm * 1.15) : emballer(lg, Lm); }
     if (o.horssol) { x.perimetre = perimetreDe(contour(o, 0.04)); x.hv = Math.max(0, o.hb - hT); x.rangs = Math.ceil(x.hv / pas); x.nbHabillage = Math.ceil(x.perimetre * x.rangs / Lm * 1.1); }
@@ -1036,6 +1069,34 @@ function dessinerOuvertures() {
     ctx.restore();
   }
 }
+function dessinerMeuble(g, o, z) {
+  const t = o.type, d = ELEMENTS[t], coussin = "#E9E4DA", cadre = "#3A3D3F", bois = "#A98255", L = o.l, P = o.p;
+  const rr = (x, y, w, h, c, r = 0.05) => { g.fillStyle = c; g.beginPath(); g.roundRect(x * z, y * z, w * z, h * z, r * z); g.fill(); };
+  const rond = (x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x * z, y * z, r * z, 0, 6.3); g.fill(); };
+  const sieges = (n, x0, x1, y, w = 0.42) => { for (let i = 0; i < n; i++) rr(x0 + (x1 - x0 - w) * (n > 1 ? i / (n - 1) : 0.5), y, w, 0.42, cadre); };
+  if (t === "salon") { rr(-L / 2, -P / 2, L, 0.8, cadre); rr(-L / 2, -P / 2, 0.8, P, cadre); rr(-L / 2 + 0.07, -P / 2 + 0.07, L - 0.14, 0.66, coussin); rr(-L / 2 + 0.07, -P / 2 + 0.07, 0.66, P - 0.14, coussin); rr(-0.1, -0.05, L / 2 - 0.1, 0.7, bois); }
+  else if (t === "repas" || t === "repas8") { const n = t === "repas" ? 3 : 4; sieges(n, -L / 2 + 0.25, L / 2 - 0.25, -P / 2); sieges(n, -L / 2 + 0.25, L / 2 - 0.25, P / 2 - 0.42); rr(-L / 2 + 0.05, -0.48, L - 0.1, 0.96, bois); }
+  else if (t === "bistrot") { rond(0, 0, 0.35, bois); sieges(1, -0.21, 0.21, -P / 2); sieges(1, -0.21, 0.21, P / 2 - 0.42); }
+  else if (t === "chaise") { rr(-L / 2, -P / 2, L, P, cadre, 0.06); rr(-L / 2 + 0.05, -P / 2 + 0.12, L - 0.1, P - 0.17, coussin, 0.04); }
+  else if (t === "fauteuil") { rr(-L / 2, -P / 2, L, P, cadre, 0.12); rr(-L / 2 + 0.08, -P / 2 + 0.14, L - 0.16, P - 0.22, coussin, 0.08); }
+  else if (t === "bain") { rr(-L / 2, -P / 2, L, P, cadre); rr(-L / 2 + 0.05, -P / 2 + 0.05, L - 0.1, P - 0.1, coussin); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; g.beginPath(); g.moveTo(-L / 2 * z, (-P / 2 + 0.6) * z); g.lineTo(L / 2 * z, (-P / 2 + 0.6) * z); g.stroke(); }
+  else if (t === "banc") { rr(-L / 2, -P / 2, L, P, bois); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(-L / 2 * z, (-P / 2 + P * k / 4) * z); g.lineTo(L / 2 * z, (-P / 2 + P * k / 4) * z); g.stroke(); } }
+  else if (t === "parasol") { g.globalAlpha = 0.86; g.fillStyle = d.coul; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); } g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.2)"; g.lineWidth = 1; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * L / 2 * z, Math.sin(a) * L / 2 * z); g.stroke(); } }
+  else if (t === "voile") { g.globalAlpha = 0.8; g.fillStyle = d.coul; g.beginPath(); g.moveTo(-L / 2 * z, -P / 2 * z); g.lineTo(L / 2 * z, -P / 2 * z); g.lineTo(0, P / 2 * z); g.closePath(); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(0,0,0,.3)"; g.lineWidth = 1; g.stroke(); }
+  else if (t === "barbecue" || t === "plancha") { rr(-L / 2, -P / 2, L, P, cadre); rr(-L / 2 + 0.2, -P / 2 + 0.06, L - 0.4, P - 0.12, t === "barbecue" ? "#1E1F20" : "#8A8D90"); if (t === "barbecue") { g.strokeStyle = "rgba(255,255,255,.28)"; g.lineWidth = 1; for (let i = 0; i < 6; i++) { const x = -L / 2 + 0.25 + i * (L - 0.5) / 5; g.beginPath(); g.moveTo(x * z, (-P / 2 + 0.1) * z); g.lineTo(x * z, (P / 2 - 0.1) * z); g.stroke(); } } }
+  else if (t === "cuisineext") { rr(-L / 2, -P / 2, L, P, d.coul, 0.03); rr(-L / 2 + 0.1, -P / 2 + 0.08, 0.6, P - 0.16, "#1E1F20"); rond(L / 2 - 0.5, 0, 0.18, "#C9D3DA"); }
+  else if (t === "brasero") { rond(0, 0, L / 2, d.coul); rond(0, 0, L / 2 - 0.1, "#C8622A"); }
+  else if (t === "jardiniere") { rr(-L / 2, -P / 2, L, P, d.coul); for (let i = 0; i < 5; i++) rond(-L / 2 + 0.12 + i * (L - 0.24) / 4, 0, 0.15, i % 2 ? "#4F7A3A" : "#6A9A4A"); }
+  else if (t === "pot") { rond(0, 0, L / 2, d.coul); rond(0, 0, L / 2 - 0.08, "#5A8A3E"); }
+  else if (t === "spaposable") { rr(-L / 2, -P / 2, L, P, d.coul, 0.2); rr(-L / 2 + 0.15, -P / 2 + 0.15, L - 0.3, P - 0.3, "#67BFD2", 0.5); g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 0.5 * z, 0, 6.3); g.stroke(); }
+  else if (t === "hamac") { rr(-L / 2, -0.04, L, 0.08, cadre); rr(-L / 2 + 0.5, -P / 2 + 0.1, L - 1, P - 0.2, d.coul, 0.4); }
+  else if (t === "balancelle") { rr(-L / 2, -P / 2, L, P, cadre, 0.08); rr(-L / 2 + 0.1, -P / 2 + 0.35, L - 0.2, P - 0.5, coussin, 0.06); }
+  else if (t === "pergolabox") { g.strokeStyle = d.coul; g.lineWidth = Math.max(2, 0.12 * z); g.strokeRect(-L / 2 * z, -P / 2 * z, L * z, P * z); g.lineWidth = Math.max(1, 0.05 * z); for (let i = 1; i < 7; i++) { const x = -L / 2 + L * i / 7; g.beginPath(); g.moveTo(x * z, -P / 2 * z); g.lineTo(x * z, P / 2 * z); g.stroke(); } }
+  else if (t === "lanterne") { rond(0, 0, L / 2, d.coul); rond(0, 0, L / 2 - 0.05, "#FFE9A8"); }
+  else if (t === "douche") { rr(-L / 2, -P / 2, L, P, d.coul, 0.05); rond(0, 0, 0.12, "#C9D3DA"); }
+  else if (t === "velo") { rr(-L / 2, -P / 2, L, P, d.coul, 0.03); for (let i = 0; i < 3; i++) rr(-L / 2 + 0.2 + i * 0.55, -P / 2 + 0.05, 0.08, P - 0.1, "#1E1F20"); }
+  else rr(-L / 2, -P / 2, L, P, d.coul);
+}
 function dessinerElements() {
   const c = calepin, z = cam.z;
   const chemin = pts => { ctx.beginPath(); pts.forEach((p, k) => { const s = ecran(p); if (k) ctx.lineTo(s.x, s.y); else ctx.moveTo(s.x, s.y); }); ctx.closePath(); };
@@ -1046,6 +1107,7 @@ function dessinerElements() {
       chemin(ext); ctx.fillStyle = c.p.base; ctx.fill(); ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1.3; ctx.stroke();
       if (!d.rond) { ctx.lineWidth = 1; ctx.beginPath(); ext.forEach((q, i) => { const a = ecran(q), b = ecran(int[i]); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }); ctx.stroke(); }
     }
+    if (d.meuble) { const s = ecran(o); ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(o.rot * Math.PI / 180); ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3; dessinerMeuble(ctx, o, z); ctx.restore(); return; }
     chemin(contour(o)); ctx.fillStyle = d.coul; ctx.fill(); ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1.4; ctx.stroke();
     const s = ecran(o); ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(o.rot * Math.PI / 180); ctx.scale(z, z); ctx.lineWidth = 1 / z; ctx.strokeStyle = "rgba(0,0,0,.55)";
     if (o.type === "escalier") {
@@ -1129,6 +1191,7 @@ function dessinerCalque() {
   if (edition) {
     pts.forEach((p, i) => { const s = ecran(p); h += `<g data-s="${i}"><circle class="tampon" cx="${s.x}" cy="${s.y}" r="22"/><circle class="sommet" cx="${s.x}" cy="${s.y}" r="7"/></g>`; });
     if (fond || etat.pieces.length > 1) { const bb = boiteEnglobante(pts), s = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }); h += `<g data-t="1"><circle class="c-pastille" cx="${s.x}" cy="${s.y}" r="18"/><path d="M${s.x - 9} ${s.y}h18M${s.x} ${s.y - 9}v18" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></g>`; }
+    if (c.estExt && nom === "forme") { const bb = boiteEnglobante(pts), ce = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }), ry = Math.min(ecran({ x: 0, y: bb.vmin }).y - 46, ce.y - 60); h += `<path class="rot-lien" d="M${ce.x} ${ce.y}L${ce.x} ${ry}"/><g data-rot="1" role="button" aria-label="Tourner la terrasse"><circle class="tampon" cx="${ce.x}" cy="${ry}" r="24"/><circle class="c-pastille" cx="${ce.x}" cy="${ry}" r="17"/><path d="M${ce.x - 7} ${ry + 2}a7 7 0 1 1 3 5.5M${ce.x - 7} ${ry - 4}v6h6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>`; }
   }
   if (nom === "elements" && vue !== "3d") {
     if (!c.estExt) etat.ouvertures.forEach((o, i) => { const a = ancrage(o), s = ecran({ x: a.cx, y: a.cy }); h += `<g data-p="${i}"><circle class="tampon" cx="${s.x}" cy="${s.y}" r="22"/><circle class="sommet" cx="${s.x}" cy="${s.y}" r="6"/></g>`; });
@@ -1183,6 +1246,16 @@ function bougerBord(base, i, m) {
   const n = base.length, j = (i + 1) % n, A = base[i], B = base[j], l = Math.hypot(B.x - A.x, B.y - A.y) || 1, nx = (B.y - A.y) / l, ny = -(B.x - A.x) / l;
   const dep = arrondi((m.x - (A.x + B.x) / 2) * nx + (m.y - (A.y + B.y) / 2) * ny), pts = base.map(p => ({ ...p }));
   pts[i].x += nx * dep; pts[i].y += ny * dep; pts[j].x += nx * dep; pts[j].y += ny * dep; return pts;
+}
+function tournerTerrasse(g, da) {
+  const a = da * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), ce = g.ce, tp = p => ({ x: ce.x + (p.x - ce.x) * co - (p.y - ce.y) * si, y: ce.y + (p.x - ce.x) * si + (p.y - ce.y) * co });
+  const np = g.base.map(p => { const q = tp(p); return { x: Math.round(q.x * 1000) / 1000, y: Math.round(q.y * 1000) / 1000 }; });
+  if (!valide(np)) return;
+  etat.poly = np; etat.forme = null;
+  const to = l => l.map(o => ({ ...o, ...tp(o), rot: o.rot === undefined ? undefined : mod(o.rot + da, 360) }));
+  etat.marches = to(g.mar); etat.ouvertures = to(g.ouv); etat.elements = to(g.ele);
+  etat.rotation = mod(g.rot0 + da + 180, 360) - 180; $("rotation").value = Math.round(etat.rotation); $("o-rotation").textContent = `${Math.round(etat.rotation)}°`;
+  maj();
 }
 function fixerLongueur(i, L) {
   const pts = etat.poly.map(p => ({ ...p })), n = pts.length, j = (i + 1) % n, k = (j + 1) % n, dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y, l = Math.hypot(dx, dy), d = L - l, ux = dx / l, uy = dy / l;
@@ -1251,7 +1324,7 @@ scene.addEventListener("pointerdown", e => {
   if (vue === "3d" || e.target.closest(".vues, .ar, .outils, .bandeau, .legende, #cote-edit")) return;
   fermerEdition(true);
   const q = pos(e); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
-  const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-ex],[data-room]") : null, d = c ? c.dataset : {};
+  const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
   if (mode === "calibrage" && pointeurs.size === 1) { if (calibration.length < 2) { calibration.push(monde(q.x, q.y)); if (calibration.length === 2) demanderDistance(); planifier(); } return; }
   if (pointeurs.size === 2) { const [a, b] = [...pointeurs.values()]; geste = { type: "pince", d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, ox: cam.ox, oy: cam.oy, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
   const m = monde(q.x, q.y);
@@ -1271,6 +1344,7 @@ scene.addEventListener("pointerdown", e => {
   if (d.c !== undefined) { geste = { type: "cote", i: +d.c, x: q.x, y: q.y }; return; }
   if (d.s !== undefined) { if (outil === "retirer") { retirerPoint(+d.s); geste = { type: "rien" }; return; } geste = { type: "sommet", i: +d.s, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
   if (d.e !== undefined) { geste = { type: "bord", i: +d.e, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
+  if (d.rot !== undefined) { const bb = boiteEnglobante(etat.poly), ce = { x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }; geste = { type: "rotation", ce, a0: Math.atan2(m.y - ce.y, m.x - ce.x), base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), rot0: etat.rotation || 0, ok: false }; return; }
   if (d.t !== undefined) { geste = { type: "bloc", base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), m, ok: false }; return; }
   if (d.m !== undefined) { geste = { type: "ancre", liste: "marches", i: +d.m, ok: false }; return; }
   if (d.p !== undefined) { geste = { type: "ancre", liste: "ouvertures", i: +d.p, ok: false }; return; }
@@ -1285,6 +1359,7 @@ scene.addEventListener("pointermove", e => {
   const m = monde(q.x, q.y);
   if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { o.x = m.x; o.y = m.y; maj(); } return; }
   if (geste.type === "element") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (o) { o.x = arrondi(m.x + geste.dx); o.y = arrondi(m.y + geste.dy); aimanter(o); maj(); } return; }
+  if (geste.type === "rotation") { if (!geste.ok) { memoriser(); geste.ok = true; } let da = (Math.atan2(m.y - geste.ce.y, m.x - geste.ce.x) - geste.a0) * 180 / Math.PI; if (!e.shiftKey) da = Math.round(da / 5) * 5; tournerTerrasse(geste, da); return; }
   if (geste.type === "bloc") { if (!geste.ok) { memoriser(); geste.ok = true; } const dx = arrondi(m.x - geste.m.x), dy = arrondi(m.y - geste.m.y), dep = l => l.map(o => ({ ...o, x: o.x + dx, y: o.y + dy })), np = geste.base.map(p => ({ x: p.x + dx, y: p.y + dy })); if (!valide(np)) return; etat.poly = np; etat.marches = dep(geste.mar); etat.ouvertures = dep(geste.ouv); etat.elements = dep(geste.ele); maj(); return; }
   if (geste.type === "sommet" || geste.type === "bord") {
     let pts;
@@ -1501,7 +1576,7 @@ function afficherAjouts() {
   $("ajout-pieces").innerHTML = Object.entries(PIECES).map(([k, v]) => `<button type="button" data-n="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-zones").innerHTML = Object.entries(ZONES).map(([k, v]) => `<button type="button" data-z="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   const boutons = l => l.map(([k, v]) => `<button type="button" data-t="${k}">${v.nom}</button>`).join(""), liste = Object.entries(ELEMENTS).filter(([, v]) => v.lieu === etat.lieu);
-  $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => !v.decor)); $("ajout-decor").innerHTML = boutons(liste.filter(([, v]) => v.decor));
+  $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => !v.decor && !v.meuble)); $("ajout-decor").innerHTML = boutons(liste.filter(([, v]) => v.decor)); $("ajout-meubles").innerHTML = boutons(liste.filter(([, v]) => v.meuble));
   const reel = !!(fond && fond.aerien);
   $("bloc-decor").hidden = !ex; $("bloc-reel").hidden = !reel; $("lire-pente").hidden = !reel || !ex;
   $("env-bat").setAttribute("aria-pressed", String(etat.envBat)); $("env-arbres").setAttribute("aria-pressed", String(etat.envArbres));
@@ -1546,6 +1621,7 @@ function synchroniser() {
   appuyer("#lieux", "data-lieu", etat.lieu);
   appuyer("#formes", "data-forme", etat.forme || "");
   $("angles").setAttribute("aria-pressed", String(etat.angles));
+  $("bloc-rotation").hidden = !ex; $("rotation").value = Math.round(etat.rotation || 0); $("o-rotation").textContent = `${Math.round(etat.rotation || 0)}°`;
   document.querySelector('[data-fond="adresse"]').hidden = !ex; if (!ex) $("bloc-adresse").hidden = true;
   $("fond-vide").textContent = ex ? "Jardin d’exemple" : "Pièce vierge";
   $("bloc-ext").hidden = !ex; $("bloc-int").hidden = ex;
@@ -1614,9 +1690,15 @@ $("dims").addEventListener("change", e => {
 $("formes").addEventListener("click", e => {
   const b = e.target.closest("[data-forme]"); if (!b) return; memoriser();
   const bb = boiteEnglobante(etat.poly), nv = copieForme(b.dataset.forme), bn = boiteEnglobante(nv), dx = arrondi((bb.umin + bb.umax) / 2 - (bn.umin + bn.umax) / 2), dy = arrondi((bb.vmin + bb.vmax) / 2 - (bn.vmin + bn.vmax) / 2);
-  etat.forme = b.dataset.forme; etat.poly = fond ? nv.map(p => ({ x: p.x + dx, y: p.y + dy })) : nv; synchroniser(); cadrer();
+  etat.forme = b.dataset.forme; etat.poly = fond ? nv.map(p => ({ x: p.x + dx, y: p.y + dy })) : nv;
+  if (ext() && etat.rotation) { const bb2 = boiteEnglobante(etat.poly); tournerTerrasse({ ce: { x: (bb2.umin + bb2.umax) / 2, y: (bb2.vmin + bb2.vmax) / 2 }, base: etat.poly, mar: etat.marches, ouv: etat.ouvertures, ele: etat.elements, rot0: 0 }, etat.rotation); }
+  synchroniser(); cadrer();
 });
 $("outils-forme").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (b) choisirOutil(b.dataset.v); });
+let gesteCurseur = null;
+$("rotation").addEventListener("pointerdown", () => { const bb = boiteEnglobante(etat.poly); gesteCurseur = { ce: { x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }, base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), rot0: etat.rotation || 0, ok: false }; });
+$("rotation").addEventListener("input", e => { if (!gesteCurseur) return; if (!gesteCurseur.ok) { memoriser(); gesteCurseur.ok = true; } tournerTerrasse(gesteCurseur, +e.target.value - gesteCurseur.rot0); });
+$("rotation").addEventListener("change", () => { gesteCurseur = null; });
 $("angles").addEventListener("click", () => { etat.angles = !etat.angles; $("angles").setAttribute("aria-pressed", String(etat.angles)); });
 $("ajout-marche").addEventListener("click", () => { choisirOutil(outil === "marche" ? "ajuster" : "marche"); if (outil === "marche") toast("Touchez le bord où placer la marche."); });
 $("ajout-ouvertures").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (b) choisirOutil(typeOutil === b.dataset.o ? "ajuster" : "ouverture", typeOutil === b.dataset.o ? "" : b.dataset.o); });
@@ -1634,6 +1716,7 @@ function ajouterElement(e) {
   if (t === "escalier") { o.ht = 2.7; o.revetir = false; o.p = infoEscalier(o).course; }
   if (d.margelle) o.margelle = true;
   if (d.decor) { const n = etat.elements.filter(q => ELEMENTS[q.type].decor).length; o.y = arrondi(bb.vmax + 1.5 + o.p / 2 + (n % 3) * 1.5); o.x = arrondi(o.x + ((n % 3) - 1) * 2.5); }
+  if (d.meuble) { const n = etat.elements.filter(q => ELEMENTS[q.type].meuble).length; o.x = arrondi(o.x + ((n % 3) - 1) * 0.7); o.y = arrondi(o.y + (Math.floor(n / 3) % 3 - 1) * 0.7); }
   if (t === "piscine" || t === "piscineronde") { o.horssol = false; o.hb = 1.2; }
   if ((t === "piscine" || t === "piscineronde") && etat.forme === "rectangle" && (bb.umax - bb.umin < o.l + 3 || bb.vmax - bb.vmin < o.p + 3)) {
     const L = Math.max(bb.umax - bb.umin, o.l + 3), P = Math.max(bb.vmax - bb.vmin, o.p + 3);
@@ -1644,7 +1727,7 @@ function ajouterElement(e) {
   if (vue !== "plan") changerVue("plan");
   synchroniser(); cadrer();
 }
-$("ajout-elements").addEventListener("click", ajouterElement); $("ajout-decor").addEventListener("click", ajouterElement);
+$("ajout-elements").addEventListener("click", ajouterElement); $("ajout-decor").addEventListener("click", ajouterElement); $("ajout-meubles").addEventListener("click", ajouterElement);
 for (const [id, k] of [["env-bat", "envBat"], ["env-arbres", "envArbres"]]) $(id).addEventListener("click", () => { etat[k] = !etat[k]; $(id).setAttribute("aria-pressed", String(etat[k])); sceneModifiee(); });
 $("liste-elements").addEventListener("click", e => {
   const c = e.target.closest("[data-i]"); if (!c) return;
@@ -2034,6 +2117,31 @@ function objetElement(o, m) {
     C(0.11, 0.15, 2.6, 1.3, M(0x5A4632)); const s = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 1), M(0x4F7A3A, 1)); s.position.y = 3.3; s.castShadow = true; g.add(s);
   } else if (o.type === "regard") {
     B(o.l, 0.02, o.p, 0, -0.01, 0, M(0x8D8D89));
+  } else if (d.meuble) {
+    const t = o.type, cadre = M(0x3A3D3F, 0.5), coussin = M(0xE6E0D4, 0.95), boisM = M(0xA98255, 0.7), L = o.l, P = o.p, H = d.h;
+    const chaise = (x, z, r = 0, w = 0.42) => { const c = new THREE.Group(); const q = (a, b, e, px, py, pz) => { const s = new THREE.Mesh(new THREE.BoxGeometry(a, b, e), cadre); s.position.set(px, py, pz); s.castShadow = true; c.add(s); }; q(w, 0.05, w, 0, 0.45, 0); q(w, 0.42, 0.04, 0, 0.66, -w / 2 + 0.02); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) q(0.03, 0.44, 0.03, a * (w / 2 - 0.03), 0.22, b * (w / 2 - 0.03)); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); };
+    if (t === "salon") { B(L, 0.3, 0.8, 0, 0.15, -P / 2 + 0.4, cadre); B(0.8, 0.3, P - 0.8, -L / 2 + 0.4, 0.15, 0.4, cadre); B(L - 0.1, 0.14, 0.7, 0, 0.37, -P / 2 + 0.4, coussin); B(0.7, 0.14, P - 0.9, -L / 2 + 0.4, 0.37, 0.4, coussin); B(L, 0.42, 0.14, 0, 0.5, -P / 2 + 0.07, cadre); B(0.14, 0.42, P - 0.14, -L / 2 + 0.07, 0.5, 0.07, cadre); B(L / 2 - 0.2, 0.06, 0.7, L / 4, 0.34, 0.3, boisM); }
+    else if (t === "repas" || t === "repas8") { const n = t === "repas" ? 3 : 4; B(L - 0.1, 0.05, 0.96, 0, 0.75, 0, boisM); for (const [x, z] of [[-L / 2 + 0.15, -0.4], [L / 2 - 0.15, -0.4], [-L / 2 + 0.15, 0.4], [L / 2 - 0.15, 0.4]]) B(0.06, 0.74, 0.06, x, 0.37, z, cadre); for (let i = 0; i < n; i++) { const x = -L / 2 + 0.46 + (L - 0.92) * (i / (n - 1)); chaise(x, -P / 2 + 0.21, 0); chaise(x, P / 2 - 0.21, Math.PI); } }
+    else if (t === "bistrot") { C(0.35, 0.35, 0.04, 0.72, boisM); C(0.03, 0.03, 0.7, 0.35, cadre, 12); C(0.25, 0.27, 0.03, 0.015, cadre); chaise(0, -P / 2 + 0.21, 0); chaise(0, P / 2 - 0.21, Math.PI); }
+    else if (t === "chaise") chaise(0, 0, 0, 0.46);
+    else if (t === "fauteuil") { B(L, 0.3, P, 0, 0.15, 0, cadre); B(L - 0.16, 0.14, P - 0.2, 0, 0.37, 0.02, coussin); B(L, 0.42, 0.14, 0, 0.5, -P / 2 + 0.07, cadre); B(0.12, 0.25, P, -L / 2 + 0.06, 0.42, 0, cadre); B(0.12, 0.25, P, L / 2 - 0.06, 0.42, 0, cadre); }
+    else if (t === "bain") { B(L, 0.05, P, 0, 0.28, 0, cadre); B(L - 0.08, 0.08, P * 0.62, 0, 0.33, P * 0.17, coussin); const dos = B(L - 0.08, 0.08, P * 0.36, 0, 0.5, -P * 0.33, coussin); dos.rotation.x = 0.6; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B(0.04, 0.26, 0.04, a * (L / 2 - 0.05), 0.13, b * (P / 2 - 0.1), cadre); }
+    else if (t === "banc") { B(L, 0.05, P, 0, 0.45, 0, boisM); B(0.06, 0.43, P - 0.06, -L / 2 + 0.08, 0.21, 0, cadre); B(0.06, 0.43, P - 0.06, L / 2 - 0.08, 0.21, 0, cadre); }
+    else if (t === "parasol") { C(0.04, 0.04, 2.4, 1.2, cadre, 10); C(0.02, L / 2, 0.5, 2.5, M(0xE6DCC7, 0.9), 8); C(0.3, 0.32, 0.06, 0.03, cadre); }
+    else if (t === "voile") { for (const [x, z] of [[-L / 2, -P / 2], [L / 2, -P / 2], [0, P / 2]]) C(0.04, 0.05, H, H / 2, cadre, 10); const f = new THREE.Shape(); f.moveTo(-L / 2, P / 2); f.lineTo(L / 2, P / 2); f.lineTo(0, -P / 2); f.closePath(); const v = new THREE.Mesh(new THREE.ShapeGeometry(f), new THREE.MeshStandardMaterial({ color: teinte(0xE9E3D5), roughness: 0.9, side: THREE.DoubleSide })); v.rotation.x = -Math.PI / 2; v.position.y = H - 0.15; v.castShadow = true; g.add(v); }
+    else if (t === "barbecue" || t === "plancha") { B(L, 0.05, P, 0, 0.82, 0, cadre); B(L - 0.4, 0.3, P - 0.12, 0, 0.98, 0, M(t === "barbecue" ? 0x1E1F20 : 0x8A8D90, 0.4)); for (const [x, z] of [[-L / 2 + 0.07, -P / 2 + 0.07], [L / 2 - 0.07, -P / 2 + 0.07], [-L / 2 + 0.07, P / 2 - 0.07], [L / 2 - 0.07, P / 2 - 0.07]]) B(0.05, 0.8, 0.05, x, 0.4, z, cadre); }
+    else if (t === "cuisineext") { B(L, H, P, 0, H / 2, 0, M(0x8A8D90, 0.6)); B(L + 0.04, 0.04, P + 0.04, 0, H + 0.02, 0, M(0xEDEAE3, 0.35)); B(0.6, 0.25, P - 0.14, -L / 2 + 0.45, H + 0.16, 0, M(0x1E1F20, 0.4)); C(0.18, 0.18, 0.02, H + 0.05, M(0xC9D3DA, 0.2)); }
+    else if (t === "brasero") { C(L / 2, L / 2 - 0.08, H, H / 2, M(0x2E2A27, 0.6)); C(L / 2 - 0.1, L / 2 - 0.1, 0.02, H - 0.05, M(0xC8622A, 0.8)); }
+    else if (t === "jardiniere") { B(L, H, P, 0, H / 2, 0, M(0x4A3F36)); for (let i = 0; i < 6; i++) { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17 + (i % 2) * 0.05, 1), M(i % 2 ? 0x4F7A3A : 0x6A9A4A, 1)); f.position.set(-L / 2 + 0.12 + i * (L - 0.24) / 5, H + 0.1 + (i % 3) * 0.08, 0); f.castShadow = true; g.add(f); } }
+    else if (t === "pot") { C(L / 2, L / 2 - 0.06, H, H / 2, M(0x6F5B4A)); const f = new THREE.Mesh(new THREE.IcosahedronGeometry(L / 2 + 0.05, 1), M(0x5A8A3E, 1)); f.position.y = H + 0.25; f.castShadow = true; g.add(f); }
+    else if (t === "spaposable") { B(L, 0.85, P, 0, 0.42, 0, M(0x54493F)); const e = B(L - 0.3, 0.02, P - 0.3, 0, 0.86, 0, new THREE.MeshStandardMaterial({ color: teinte(0x67BFD2), roughness: 0.12, metalness: 0.1 })); e.castShadow = false; }
+    else if (t === "hamac") { B(L, 0.06, 0.06, 0, 0.3, 0, cadre); B(0.06, 0.6, 0.6, -L / 2 + 0.03, 0.3, 0, cadre); B(0.06, 0.6, 0.6, L / 2 - 0.03, 0.3, 0, cadre); const h = B(L - 1, 0.04, P - 0.2, 0, 0.55, 0, M(0xC9A66B, 0.9)); h.rotation.x = 0.05; }
+    else if (t === "balancelle") { for (const x of [-L / 2 + 0.05, L / 2 - 0.05]) { B(0.05, H, 0.05, x, H / 2, -P / 2 + 0.1, cadre); B(0.05, H, 0.05, x, H / 2, P / 2 - 0.1, cadre); } B(L, 0.05, P, 0, H, 0, cadre); B(L - 0.2, 0.3, 0.7, 0, 0.5, 0.1, cadre); B(L - 0.3, 0.12, 0.6, 0, 0.7, 0.12, coussin); B(L - 0.3, 0.45, 0.1, 0, 0.9, -0.25, coussin); }
+    else if (t === "pergolabox") { for (const [x, z] of [[-L / 2 + 0.06, -P / 2 + 0.06], [L / 2 - 0.06, -P / 2 + 0.06], [-L / 2 + 0.06, P / 2 - 0.06], [L / 2 - 0.06, P / 2 - 0.06]]) B(0.12, H, 0.12, x, H / 2, z, M(0x5A4632)); B(L, 0.12, 0.12, 0, H, -P / 2 + 0.06, M(0x5A4632)); B(L, 0.12, 0.12, 0, H, P / 2 - 0.06, M(0x5A4632)); for (let i = 0; i < 7; i++) B(0.05, 0.14, P, -L / 2 + L * (i + 0.5) / 7, H + 0.07, 0, M(0x5A4632)); }
+    else if (t === "lanterne") { C(L / 2, L / 2, 0.06, 0.03, cadre); B(L * 0.7, H - 0.12, L * 0.7, 0, H / 2, 0, new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 0.8, transparent: true, opacity: 0.85 })); C(L / 2, L / 2, 0.04, H - 0.02, cadre); }
+    else if (t === "douche") { B(L, 0.08, P, 0, 0.04, 0, M(0x9A9A96)); C(0.04, 0.04, H, H / 2, M(0x9A9A96, 0.3), 10); C(0.12, 0.12, 0.03, H - 0.02, M(0xC9D3DA, 0.3)); }
+    else if (t === "velo") { B(L, 0.05, P, 0, 0.1, 0, M(0x6B6F6C, 0.5)); for (let i = 0; i < 3; i++) { const x = -L / 2 + 0.3 + i * 0.6; for (const dz of [-0.5, 0.5]) { const r2 = C(0.33, 0.33, 0.03, 0.33, M(0x1E1F20, 0.5), 20); r2.rotation.z = Math.PI / 2; r2.position.set(x, 0.33, dz); } B(0.03, 0.4, 0.9, x, 0.55, 0, M(0x3A6BB0, 0.5)); } }
+    else B(L, H, P, 0, H / 2, 0, M(d.coul));
   } else if (d.rond) { C(o.l / 2, o.l / 2, d.h, d.h / 2, M(d.coul)); }
   else {
     B(o.l, d.h, o.p, 0, d.h / 2, 0, M(d.coul));
