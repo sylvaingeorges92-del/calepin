@@ -1605,7 +1605,7 @@ function ajouterElement(e) {
   const t = b.dataset.t, d = ELEMENTS[t], bb = boiteEnglobante(etat.poly), o = { type: t, x: arrondi((bb.umin + bb.umax) / 2), y: arrondi((bb.vmin + bb.vmax) / 2), l: d.l, p: d.p, rot: 0 };
   if (t === "escalier") { o.ht = 2.7; o.revetir = false; o.p = infoEscalier(o).course; }
   if (d.margelle) o.margelle = true;
-  if (d.decor) { o.y = arrondi(bb.vmax + 1.5 + o.p / 2); }
+  if (d.decor) { const n = etat.elements.filter(q => ELEMENTS[q.type].decor).length; o.y = arrondi(bb.vmax + 1.5 + o.p / 2 + (n % 3) * 1.5); o.x = arrondi(o.x + ((n % 3) - 1) * 2.5); }
   if (t === "piscine" || t === "piscineronde") { o.horssol = false; o.hb = 1.2; }
   if ((t === "piscine" || t === "piscineronde") && etat.forme === "rectangle" && (bb.umax - bb.umin < o.l + 3 || bb.vmax - bb.vmin < o.p + 3)) {
     const L = Math.max(bb.umax - bb.umin, o.l + 3), P = Math.max(bb.vmax - bb.vmin, o.p + 3);
@@ -1908,25 +1908,28 @@ function decorReel(m, t, groupe) {
   const P = (px, py, dy) => { const q = pointFond(px, py); return [q.x - m.cx, t.sol(q) + dy, q.y - m.cz]; };
   const plan = (tx, x0, y0, x1, y1, dy) => { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute([...P(x0, y1, dy), ...P(x1, y1, dy), ...P(x1, y0, dy), ...P(x0, y0, dy)], 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]); g.computeVertexNormals(); const me = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); me.receiveShadow = true; groupe.add(me); };
   plan(f.texLoin, 0, 0, f.l, f.h, -0.06); plan(f.texPres, ...f.prox, -0.03);
-  const mur = new THREE.MeshStandardMaterial({ color: teinte(0xE4DED2), roughness: 0.95 });
+  const mur = new THREE.MeshStandardMaterial({ color: teinte(0xE4DED2), roughness: 0.95, transparent: true });
   if (etat.envBat) for (const b of f.bat) {
-    const pts = b.px.map(([x, y]) => pointFond(x, y)), base = Math.min(...pts.map(q => t.sol(q))), forme = new THREE.Shape(); pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) forme.lineTo(x, y); else forme.moveTo(x, y); });
+    const pts = b.px.map(([x, y]) => pointFond(x, y)), base = Math.min(...pts.map(q => t.sol(q))), forme = new THREE.Shape(), bz = boiteEnglobante(pts), mats = [];
+    if (Math.hypot((bz.umin + bz.umax) / 2 - m.cx, (bz.vmin + bz.vmax) / 2 - m.cz) > 110) continue; pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) forme.lineTo(x, y); else forme.moveTo(x, y); });
     const gm = new THREE.ExtrudeGeometry(forme, { depth: b.h + 0.5, bevelEnabled: false }); gm.rotateX(-Math.PI / 2);
-    const toit = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${b.coul.join(",")})`).convertSRGBToLinear(), roughness: 0.85, side: THREE.DoubleSide });
-    const me = new THREE.Mesh(gm, [toit, mur]); me.position.y = base - 0.5; me.castShadow = me.receiveShadow = true; groupe.add(me);
+    const toit = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${b.coul.join(",")})`).convertSRGBToLinear(), roughness: 0.85, side: THREE.DoubleSide, transparent: true }), murB = mur.clone(); mats.push(toit, murB);
+    const me = new THREE.Mesh(gm, [toit, murB]); me.position.y = base - 0.5; me.castShadow = me.receiveShadow = true; groupe.add(me);
     if (b.toit > 0.4) {
       const bx = boiteEnglobante(pts), ins = Math.min(b.toit * 1.3, Math.min(bx.umax - bx.umin, bx.vmax - bx.vmin) * 0.42), inn = decaler(pts, ins), y0 = base + b.h, y1 = y0 + b.toit, s = [];
       pts.forEach((q, i) => { const j = (i + 1) % pts.length, A = [q.x - m.cx, y0, q.y - m.cz], B = [pts[j].x - m.cx, y0, pts[j].y - m.cz], C = [inn[j].x - m.cx, y1, inn[j].y - m.cz], D = [inn[i].x - m.cx, y1, inn[i].y - m.cz]; s.push(...A, ...B, ...C, ...A, ...C, ...D); });
       const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(s, 3)); g2.computeVertexNormals(); const pan = new THREE.Mesh(g2, toit.clone()); pan.castShadow = true; groupe.add(pan);
       const f2 = new THREE.Shape(); inn.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) f2.lineTo(x, y); else f2.moveTo(x, y); });
       const cap = new THREE.Mesh(new THREE.ShapeGeometry(f2), toit.clone()); cap.rotation.x = -Math.PI / 2; cap.position.y = y1; groupe.add(cap);
+      mats.push(pan.material, cap.material);
     }
+    T.occ.push({ mats, x0: bz.umin - m.cx, x1: bz.umax - m.cx, z0: bz.vmin - m.cz, z1: bz.vmax - m.cz, top: base + b.h + b.toit, v: false });
   }
   const liste = etat.envArbres ? f.arbres.map(a => ({ a, q: pointFond(a.px, a.py) })).filter(({ q }) => !dansPoly(q, etat.poly) && !etat.elements.some(o => ELEMENTS[o.type].eau && dansPoly(q, contour(o, 1)))) : [];
   if (liste.length) {
-    const inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), liste.length), mat = new THREE.Matrix4(), col = new THREE.Color();
-    liste.forEach(({ a, q }, i) => { const h = 1.25; mat.makeScale(a.r, a.r * h, a.r); mat.setPosition(q.x - m.cx, t.sol(q) + a.r * h * 0.92, q.y - m.cz); inst.setMatrixAt(i, mat); col.setRGB(a.c[0] / 255 * 1.5, a.c[1] / 255 * 1.5, a.c[2] / 255 * 1.5).convertSRGBToLinear(); inst.setColorAt(i, col); });
-    inst.castShadow = true; groupe.add(inst);
+    const inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshStandardMaterial({ roughness: 1 }), liste.length), mat = new THREE.Matrix4(), col = new THREE.Color(), infos = [];
+    liste.forEach(({ a, q }, i) => { const h = 1.3, x = q.x - m.cx, z = q.y - m.cz, y = t.sol(q) + a.r * h * 0.92; mat.makeScale(a.r, a.r * h, a.r); mat.setPosition(x, y, z); inst.setMatrixAt(i, mat); col.setRGB(a.c[0] / 255 * 1.2, a.c[1] / 255 * 1.2, a.c[2] / 255 * 1.2).convertSRGBToLinear(); inst.setColorAt(i, col); infos.push({ x, z, r: a.r, top: y + a.r * h, m: mat.clone(), v: false }); });
+    inst.castShadow = true; groupe.add(inst); T.arbres = { inst, infos };
   }
 }
 function objetElement(o, m) {
@@ -1953,15 +1956,21 @@ function objetElement(o, m) {
   g.position.set(o.x - m.cx, dansPoly(o, etat.poly) ? m.h3 : terrain().sol(o), o.y - m.cz); g.rotation.y = -o.rot * Math.PI / 180;
   return g;
 }
+function degager() {
+  if (!T.occ) return;
+  const c = T.camera.position, a = T.cible, sur = fn => { for (let k = 0; k <= 18; k++) { const u = k / 20; if (fn(c.x + (a.x - c.x) * u, c.y + (a.y - c.y) * u, c.z + (a.z - c.z) * u)) return true; } return false; };
+  for (const o of T.occ) { const v = sur((x, y, z) => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && y < o.top); if (v !== o.v) { o.v = v; for (const q of o.mats) { q.opacity = v ? 0.12 : 1; q.depthWrite = !v; } } }
+  if (T.arbres) { let maj3 = false; const zero = new THREE.Matrix4().makeScale(0.001, 0.001, 0.001); T.arbres.infos.forEach((o, i) => { const v = sur((x, y, z) => Math.hypot(x - o.x, z - o.z) < o.r + 0.8 && y < o.top); if (v !== o.v) { o.v = v; T.arbres.inst.setMatrixAt(i, v ? zero : o.m); maj3 = true; } }); if (maj3) T.arbres.inst.instanceMatrix.needsUpdate = true; }
+}
 function reconstruire3D() {
   const ex = ext(), formes = etat.pieces.map((_, i) => polyDe(i)), bG = boiteEnglobante(formes.flat()), centre = { x: (bG.umin + bG.umax) / 2, z: (bG.vmin + bG.vmax) / 2 };
-  vider(T.groupe);
+  vider(T.groupe); T.occ = []; T.arbres = null;
   const reel = !!(ex && fond && fond.aerien);
   T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null;
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
-  const cle = `${etat.lieu}|${Math.round(taille * 2)}`;
-  if (cle !== T.cle) { T.cle = cle; T.rayon = Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5) * Math.max(1, 1.35 / T.camera.aspect); T.phi = ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
+  const cle = `${etat.lieu}|${Math.round(taille * 2)}|${reel}`;
+  if (cle !== T.cle) { T.cle = cle; T.rayon = (reel ? Math.max(19, taille * 2.6) : Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5)) * Math.max(1, 1.35 / T.camera.aspect); T.phi = reel ? 0.92 : ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
   const d = T.sol.shadow.camera, e = Math.max(taille + 8, reel ? 34 : 0); d.left = -e; d.right = e; d.top = e; d.bottom = -e; d.near = 0.5; d.far = 50; d.updateProjectionMatrix();
 }
 function construirePiece(c, m, ip, formes) {
@@ -2017,7 +2026,7 @@ function rendu3D() {
     boucle3D = false; if (sale) { sale = false; reconstruire3D(); }
     const { camera, cible, theta, phi, rayon } = T;
     camera.position.set(cible.x + rayon * Math.sin(phi) * Math.sin(theta), cible.y + rayon * Math.cos(phi), cible.z + rayon * Math.sin(phi) * Math.cos(theta));
-    camera.lookAt(cible); T.r.render(T.s, camera);
+    camera.lookAt(cible); degager(); T.r.render(T.s, camera);
   });
 }
 function construireGLB(png) {
