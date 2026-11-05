@@ -1923,7 +1923,7 @@ function decorReel(m, t, groupe) {
       const cap = new THREE.Mesh(new THREE.ShapeGeometry(f2), toit.clone()); cap.rotation.x = -Math.PI / 2; cap.position.y = y1; groupe.add(cap);
       mats.push(pan.material, cap.material);
     }
-    T.occ.push({ mats, x0: bz.umin - m.cx, x1: bz.umax - m.cx, z0: bz.vmin - m.cz, z1: bz.vmax - m.cz, top: base + b.h + b.toit, v: false });
+    T.occ.push({ mats, meshes: [me, ...groupe.children.slice(-(b.toit > 0.4 ? 2 : 0))], x0: bz.umin - m.cx, x1: bz.umax - m.cx, z0: bz.vmin - m.cz, z1: bz.vmax - m.cz, top: base + b.h + b.toit, v: false });
   }
   const liste = etat.envArbres ? f.arbres.map(a => ({ a, q: pointFond(a.px, a.py) })).filter(({ q }) => !dansPoly(q, etat.poly) && !etat.elements.some(o => ELEMENTS[o.type].eau && dansPoly(q, contour(o, 1)))) : [];
   if (liste.length) {
@@ -1968,7 +1968,7 @@ function objetElement(o, m) {
 function degager() {
   if (!T.occ) return;
   const c = T.camera.position, a = T.cible, sur = fn => { for (let k = 0; k <= 18; k++) { const u = k / 20; if (fn(c.x + (a.x - c.x) * u, c.y + (a.y - c.y) * u, c.z + (a.z - c.z) * u)) return true; } return false; };
-  for (const o of T.occ) { const v = sur((x, y, z) => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && y < o.top); if (v !== o.v) { o.v = v; for (const q of o.mats) { q.opacity = v ? 0.12 : 1; q.depthWrite = !v; } } }
+  for (const o of T.occ) { const v = sur((x, y, z) => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && y < o.top); if (v !== o.v) { o.v = v; for (const q of o.mats) { q.opacity = v ? 0.12 : 1; q.depthWrite = !v; } for (const me of o.meshes) me.castShadow = !v; } }
   if (T.arbres) { let maj3 = false; const zero = new THREE.Matrix4().makeScale(0.001, 0.001, 0.001); T.arbres.infos.forEach((o, i) => { const v = sur((x, y, z) => Math.hypot(x - o.x, z - o.z) < o.r + 0.8 && y < o.top); if (v !== o.v) { o.v = v; T.arbres.inst.setMatrixAt(i, v ? zero : o.m); maj3 = true; } }); if (maj3) T.arbres.inst.instanceMatrix.needsUpdate = true; }
 }
 function reconstruire3D() {
@@ -1979,7 +1979,7 @@ function reconstruire3D() {
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
   const cle = `${etat.lieu}|${Math.round(taille * 2)}|${reel}`;
-  if (cle !== T.cle) { T.cle = cle; T.rayon = (reel ? Math.max(25, taille * 3) : Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5)) * Math.max(1, 1.35 / T.camera.aspect); T.phi = reel ? 0.86 : ex ? 1.27 : 0.92; T.cible.y = ex ? 0.5 : 0.6; }
+  if (cle !== T.cle) { T.cle = cle; T.rayon = (reel ? Math.max(25, taille * 3) : Math.max(6, taille * (ex ? 1.35 : 1.6) + 1.5)) * Math.max(1, 1.35 / T.camera.aspect); T.phi = reel ? 1.05 : ex ? 1.27 : 0.92; if (reel) T.theta = 0.35; T.cible.y = ex ? 0.5 : 0.6; }
   const d = T.sol.shadow.camera, e = Math.max(taille + 8, reel ? 34 : 0); d.left = -e; d.right = e; d.top = e; d.bottom = -e; d.near = 0.5; d.far = 50; d.updateProjectionMatrix();
 }
 function construirePiece(c, m, ip, formes) {
