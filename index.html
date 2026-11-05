@@ -92,7 +92,13 @@ h2, h3, p { margin: 0; }
 .choix svg { width: 30px; height: 30px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .choix b { display: block; font-weight: 700; }
 .choix small { display: block; color: var(--doux); font-size: 13px; font-weight: 400; }
-.adresse { display: flex; gap: 6px; }
+.adresse { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.adresse .commune { position: relative; grid-column: 1 / -1; }
+.adresse .commune input { width: 100%; height: 40px; }
+#communes { position: absolute; left: 0; right: 0; top: 44px; z-index: 5; display: grid; gap: 2px; padding: 4px; background: var(--panneau); border: 1.5px solid var(--ligne); border-radius: 10px; box-shadow: var(--ombre); }
+#communes:empty { display: none; }
+#communes button { text-align: left; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; }
+#communes button[aria-selected="true"], #communes button:hover { background: var(--creux); }
 .adresse input { flex: 1; min-width: 0; height: 44px; box-sizing: border-box; padding: 0 12px; border: 1.5px solid var(--ligne); border-radius: 10px; background: var(--panneau); }
 .adresse button { height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--noir); color: var(--sur-noir); font-weight: 700; }
 #suggestions { display: grid; gap: 4px; margin-top: 8px; }
@@ -302,9 +308,9 @@ h2, h3, p { margin: 0; }
       <div class="cartes">
         <button class="choix" type="button" data-fond="adresse" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.100 7-11a7 7 0 1 0-14 0c0 4.900 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/></svg><span><b>Mon adresse</b><small>Vue du ciel de votre maison, à l’échelle</small></span></button>
         <div id="bloc-adresse" hidden>
-          <form class="adresse" id="form-adresse"><input id="adresse" type="text" placeholder="12 rue des Lilas, Clermont-Ferrand" aria-label="Adresse" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggestions" aria-autocomplete="list"><button type="submit">Chercher</button></form>
+          <form class="adresse" id="form-adresse"><div class="commune"><input id="commune" type="text" placeholder="Commune ou code postal" aria-label="Commune" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="communes" aria-autocomplete="list"><div id="communes" role="listbox" aria-label="Communes proposées"></div></div><input id="adresse" type="text" placeholder="12 rue des Lilas" aria-label="Adresse" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggestions" aria-autocomplete="list"><button type="submit">Chercher</button></form>
           <div id="suggestions" role="listbox" aria-label="Adresses proposées"></div>
-          <p class="aide" id="aide-adresse">Tapez le numéro, la rue et la ville : les propositions s’affichent au fur et à mesure.</p>
+          <p class="aide" id="aide-adresse">Indiquez d’abord la commune, puis tapez la rue : les propositions s’affichent au fur et à mesure.</p>
         </div>
         <button class="choix" type="button" data-fond="plan" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4M5 15v4h14v-4"/></svg><span><b>Mon plan ou ma photo</b><small>PDF ou image, avec réglage de l’échelle</small></span></button>
         <button class="choix" type="button" data-fond="exemple" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg><span><b id="fond-vide">Jardin d’exemple</b><small>Pour commencer tout de suite</small></span></button>
@@ -1687,7 +1693,34 @@ document.querySelectorAll("[data-fond]").forEach(b => b.addEventListener("click"
   if (k === "plan") $("fichier").click();
   if (k === "exemple") { fond = null; etat.site = null; afficherAjouts(); mode = null; calibration = []; bandeau(""); fondActif(); cadrer(); }
 }));
-let propositions = [], choixAdresse = -1, minuterieAdresse = 0, requeteAdresse = 0;
+let propositions = [], choixAdresse = -1, minuterieAdresse = 0, requeteAdresse = 0, communes = [], choixCommune = -1, communeChoisie = null, minuterieCommune = 0, requeteCommune = 0;
+function afficherCommunes(liste) {
+  const l = $("communes"); communes = liste; choixCommune = -1; l.innerHTML = "";
+  liste.forEach((c, i) => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "option"); b.setAttribute("aria-selected", "false"); b.dataset.i = i; b.textContent = `${c.nom} (${c.cp})`; l.appendChild(b); });
+  $("commune").setAttribute("aria-expanded", String(liste.length > 0));
+}
+function choisirCommune(c) { communeChoisie = c; $("commune").value = `${c.nom} (${c.cp})`; afficherCommunes([]); $("adresse").focus(); const q = $("adresse").value.trim(); if (q.length >= 3) chercherAdresses(q, false); }
+async function chercherCommunes(q) {
+  const id = ++requeteCommune;
+  try {
+    const r = await fetch(`https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6&type=municipality&autocomplete=1`), d = await r.json();
+    if (id !== requeteCommune) return;
+    const vus = new Set(), liste = [];
+    for (const f of d.features || []) { const p = f.properties, cle = p.citycode; if (vus.has(cle)) continue; vus.add(cle); liste.push({ nom: p.city || p.name, cp: p.postcode, code: p.citycode }); }
+    afficherCommunes(liste);
+  } catch (err) { if (id === requeteCommune) afficherCommunes([]); }
+}
+$("commune").addEventListener("input", e => { const q = e.target.value.trim(); communeChoisie = null; clearTimeout(minuterieCommune); if (q.length < 2) { afficherCommunes([]); return; } minuterieCommune = setTimeout(() => chercherCommunes(q), 200); });
+$("commune").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); if (communes.length) choisirCommune(communes[Math.max(0, choixCommune)]); return; }
+  if (!communes.length) return;
+  const sel = i => { choixCommune = i; $("communes").querySelectorAll("[role=option]").forEach((b, k) => b.setAttribute("aria-selected", String(k === i))); };
+  if (e.key === "ArrowDown") { e.preventDefault(); sel((choixCommune + 1) % communes.length); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); sel((choixCommune - 1 + communes.length) % communes.length); }
+  else if (e.key === "Escape") afficherCommunes([]);
+});
+$("commune").addEventListener("blur", () => setTimeout(() => { if (!communeChoisie && communes.length && $("commune").value.trim()) choisirCommune(communes[0]); else if (!communeChoisie) afficherCommunes([]); }, 150));
+$("communes").addEventListener("mousedown", e => { const b = e.target.closest("[data-i]"); if (b) { e.preventDefault(); choisirCommune(communes[+b.dataset.i]); } });
 function afficherPropositions(liste, info) {
   const l = $("suggestions"), ch = $("adresse"); propositions = liste; choixAdresse = -1; l.innerHTML = "";
   liste.forEach((p, i) => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "option"); b.setAttribute("aria-selected", "false"); b.dataset.i = i; b.innerHTML = `<b>${esc(p.rue)}</b><small>${esc(p.ville)}</small>`; l.appendChild(b); });
@@ -1699,10 +1732,11 @@ function choisirAdresse(p) { $("adresse").value = p.label; afficherPropositions(
 async function chercherAdresses(q, complet) {
   const id = ++requeteAdresse;
   try {
-    const r = await fetch(`https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6&autocomplete=${complet ? 0 : 1}`), d = await r.json();
+    const filtre = communeChoisie ? `&citycode=${encodeURIComponent(communeChoisie.code)}` : "", texte = communeChoisie && complet ? `${q} ${communeChoisie.nom}` : q;
+    const r = await fetch(`https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(texte)}&limit=6&autocomplete=${complet ? 0 : 1}${filtre}`), d = await r.json();
     if (id !== requeteAdresse) return;
     const liste = (d.features || []).map(f => { const p = f.properties, rue = p.type === "municipality" ? p.city : (p.name || p.label), ville = p.type === "municipality" ? `${p.postcode || ""} ${p.context || ""}`.trim() : `${p.postcode || ""} ${p.city || ""}`.trim(); return { label: p.label, rue, ville, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }; });
-    afficherPropositions(liste, liste.length ? "" : complet ? "Adresse introuvable. Ajoutez la commune ou le code postal." : "");
+    afficherPropositions(liste, liste.length ? "" : complet ? (communeChoisie ? `Adresse introuvable à ${communeChoisie.nom}. Vérifiez le nom de la rue.` : "Adresse introuvable. Indiquez la commune ou le code postal.") : "");
     if (complet && liste.length === 1) choisirAdresse(liste[0]);
   } catch (err) { if (id === requeteAdresse) afficherPropositions([], "La vue aérienne fonctionne une fois le site en ligne. Utilisez un plan ou le jardin d’exemple ici."); }
 }
