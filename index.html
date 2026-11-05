@@ -2468,31 +2468,40 @@ function construirePiece(c, m, ip, formes) {
     const X = [-70, 70], pos = [], uv = [];
     for (const [a, b] of [[0, 0], [0, 1], [1, 1], [1, 0]]) { const x = X[a], z = X[b]; pos.push(x, t.sol({ x: x + m.cx, y: z + m.cz }), z); uv.push(a * 60, b * 60); }
     T.pelouse.geometry.dispose(); const gs = new THREE.BufferGeometry(); gs.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gs.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); gs.setIndex([0, 1, 2, 0, 2, 3]); gs.computeVertexNormals(); T.pelouse.geometry = gs;
-    const ouvs = etat.ouvertures.map(o => ({ o, a: ancrage(o), d: OUVERTURES[o.type] })), bordMaison = ouvs.length ? ouvs[0].a.i : -1;
+    const ouvs = etat.ouvertures.map(o => ({ o, a: ancrage(o), d: OUVERTURES[o.type] }));
     const reel = !!(fond && fond.aerien);
     if (reel) decorReel(m, t, groupe);
-    if (!reel || ouvs.length) {
-      const b = bordMaison >= 0 ? bords()[bordMaison] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
+    // Une façade par bord qui porte une ouverture (la maison peut border la terrasse sur plusieurs côtés) ; sans ouverture, une façade par défaut au nord.
+    const bordsMaison = [...new Set(ouvs.map(o => o.a.i))]; if (!ouvs.length && !reel) bordsMaison.push(-1);
+    const murM = new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 }), cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
+    bordsMaison.forEach((bi, k) => {
+      const b = bi >= 0 ? bords()[bi] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
       const grp = new THREE.Group(); grp.position.set(mx, 0, mz); grp.rotation.y = -ang; groupe.add(grp);
-      const large = (b ? Math.max(b.len, m.largeur) : m.largeur) + (reel ? 0 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2, murM = new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 });
-      const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5;
-      if (!reel || !fond.bat.length) { const mur = new THREE.Mesh(new THREE.BoxGeometry(large, hautMur, ep), murM); mur.position.set(0, yMur, zc); mur.castShadow = mur.receiveShadow = true; grp.add(mur); const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8 })); toit.position.set(0, base + 3.1, zc + 0.35); toit.castShadow = true; grp.add(toit); }
+      const large = (b ? Math.max(b.len, bordsMaison.length > 1 ? 0 : m.largeur) : m.largeur) + (reel ? 0 : bordsMaison.length > 1 ? 1 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2;
+      const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5; let occ = null;
+      const cadreF = cadreM.clone(), vitreF = vitreM.clone(), boisF = boisM.clone(), murF = murM.clone(); [cadreF, vitreF, boisF, murF].forEach(q => { q.transparent = true; });
+      if (!reel || !fond.bat.length) {
+        const matMur = murM.clone(), matToit = new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8, transparent: true }); matMur.transparent = true;
+        const mur = new THREE.Mesh(new THREE.BoxGeometry(large, hautMur, ep), matMur); mur.position.set(0, yMur, zc); mur.castShadow = mur.receiveShadow = true; grp.add(mur); const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), matToit); toit.position.set(0, base + 3.1, zc + 0.35); toit.castShadow = true; grp.add(toit);
+        // La façade s'efface quand la caméra regarde la terrasse à travers elle (plusieurs côtés bâtis).
+        if (b) { grp.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(mur); occ = { mats: [matMur, matToit], meshes: [mur, toit], x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z, top: bx.max.y, v: false }; T.occ.push(occ); }
+      }
       if (!ouvs.length) {
         const bl = Math.min(3.2, m.largeur * 0.6);
         const fen = new THREE.Mesh(new THREE.BoxGeometry(bl + 0.14, 2.25, 0.02), new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.6 })); fen.position.set(0, base + 1.14, zc + ep / 2 + 0.005); grp.add(fen);
         const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(0x24333C), roughness: 0.15, metalness: 0.5 })); baie.position.set(0, base + 1.12, zc + ep / 2 + 0.02); grp.add(baie);
       }
-      const cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
-      for (const { a, d } of ouvs) {
+      for (const { a, d } of ouvs.filter(o => o.a.i === bi)) {
         const sx = (a.cx - m.cx - mx) * Math.cos(ang) + (a.cy - m.cz - mz) * Math.sin(ang), y0 = m.h3 + (d.sol || 0) + 0.03, zf = zc + ep / 2, nv = d.vantaux || 1;
-        const B = (w, h, p, x, y, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, p), mat); o.position.set(x, y, z); o.castShadow = true; grp.add(o); };
-        B(a.l + 0.12, d.h + 0.12, 0.05, sx, y0 + d.h / 2, zf + 0.01, cadreM);
-        if (d.pleine) B(a.l - 0.04, d.h - 0.04, 0.05, sx, y0 + d.h / 2, zf + 0.025, boisM);
-        else for (let k = 0; k < nv; k++) { const w = a.l / nv, x = sx - a.l / 2 + w * (k + 0.5), zk = zf + 0.03 + (d.battant || nv === 1 ? 0 : k * 0.035); B(w - 0.02, d.h - 0.02, 0.04, x, y0 + d.h / 2, zk, cadreM); B(w - 0.12, d.h - 0.12, 0.012, x, y0 + d.h / 2, zk + 0.016, vitreM); }
-        if (d.sol) B(a.l + 0.16, 0.05, 0.12, sx, y0 - 0.03, zf + 0.04, murM);
+        const B = (w, h, p, x, y, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, p), mat); o.position.set(x, y, z); o.castShadow = true; grp.add(o); if (occ) occ.meshes.push(o); };
+        B(a.l + 0.12, d.h + 0.12, 0.05, sx, y0 + d.h / 2, zf + 0.01, cadreF);
+        if (d.pleine) B(a.l - 0.04, d.h - 0.04, 0.05, sx, y0 + d.h / 2, zf + 0.025, boisF);
+        else for (let k = 0; k < nv; k++) { const w = a.l / nv, x = sx - a.l / 2 + w * (k + 0.5), zk = zf + 0.03 + (d.battant || nv === 1 ? 0 : k * 0.035); B(w - 0.02, d.h - 0.02, 0.04, x, y0 + d.h / 2, zk, cadreF); B(w - 0.12, d.h - 0.12, 0.012, x, y0 + d.h / 2, zk + 0.016, vitreF); }
+        if (d.sol) B(a.l + 0.16, 0.05, 0.12, sx, y0 - 0.03, zf + 0.04, murF);
       }
-      if (!reel && etat.pente <= 2) for (const k of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(k * (m.largeur / 2 + 5.4), 0.5, zc + 15); hg.castShadow = true; grp.add(hg); }
-    }
+      if (occ) occ.mats.push(cadreF, vitreF, boisF, murF);
+      if (k === 0 && bordsMaison.length === 1 && !reel && etat.pente <= 2) for (const s of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(s * (m.largeur / 2 + 5.4), 0.5, zc + 15); hg.castShadow = true; grp.add(hg); }
+    });
     if (etat.spots) { const sm = new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 1 }); for (const q of pointsSpots()) { const o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16), sm); o.position.set(q.x - m.cx, m.h3 + 0.004, q.y - m.cz); groupe.add(o); } }
   } else {
     const contourDalle = pts => { const f = new THREE.Shape(); pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) f.lineTo(x, y); else f.moveTo(x, y); }); return f; }, forme = contourDalle(etat.poly);
