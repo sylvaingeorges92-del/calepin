@@ -191,6 +191,9 @@ h2, h3, p { margin: 0; }
 .barre { position: sticky; top: -20px; z-index: 2; margin: -6px 0 14px; overflow-x: auto; scrollbar-width: none; }
 .barre::-webkit-scrollbar { display: none; }
 .barre button { flex: none; padding: 4px 12px; white-space: nowrap; }
+.barre-cat { margin-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
+.barre-cat::-webkit-scrollbar { display: none; }
+.barre-cat button { flex: none; padding: 4px 11px; white-space: nowrap; }
 .champ-nom { display: grid; gap: 3px; margin-bottom: 4px; font-size: 13px; color: var(--doux); }
 .champ-nom input { height: 42px; box-sizing: border-box; padding: 0 10px; border: 1.5px solid var(--ligne); border-radius: 9px; background: var(--panneau); color: var(--encre); font-weight: 700; }
 .ajouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -454,7 +457,9 @@ h2, h3, p { margin: 0; }
         <p class="aide">Même revêtement et même calepinage, sans séparation.</p>
       </div>
       <h3 id="titre-elements"></h3>
+      <div class="groupe barre-cat" id="cat-int" role="tablist" aria-label="Pièces" hidden></div>
       <div class="ajouts" id="ajout-elements"></div>
+      <p class="aide" id="aide-cat" hidden></p>
       <div id="bloc-decor">
         <h3>Mobilier et habillage</h3>
         <div class="ajouts" id="ajout-meubles"></div>
@@ -657,7 +662,7 @@ const ELEMENTS = {
   muret: { lieu: "exterieur", nom: "Muret", l: 4, p: 0.2, h: 0.8, decor: 1, coul: "#BDB8AE" },
   abri: { lieu: "exterieur", nom: "Abri de jardin", l: 3, p: 2, h: 2.3, decor: 1, coul: "#9C7B57" },
   massif: { lieu: "exterieur", nom: "Massif fleuri", l: 2.5, p: 1, h: 0.35, decor: 1, coul: "#7E9B55" },
-  allee: { lieu: "exterieur", nom: "Allée", l: 1.2, p: 5, h: 0.02, decor: 1, coul: "#C9C2B2" },
+  allee: { lieu: "exterieur", nom: "Allée", l: 1.2, p: 5, h: 0.02, decor: 1, libre: 1, coul: "#C9C2B2" },
   salon: { lieu: "exterieur", nom: "Salon de jardin", l: 2.4, p: 2.4, h: 0.65, meuble: 1, coul: "#D9D2C4" },
   repas: { lieu: "exterieur", nom: "Table 6 personnes", l: 2.2, p: 1.8, h: 0.75, meuble: 1, coul: "#B5916A" },
   repas8: { lieu: "exterieur", nom: "Table 8 personnes", l: 2.9, p: 1.9, h: 0.75, meuble: 1, coul: "#B5916A" },
@@ -679,20 +684,115 @@ const ELEMENTS = {
   pergolabox: { lieu: "exterieur", nom: "Pergola", l: 3.5, p: 3, h: 2.5, meuble: 1, couvre: "poteaux", coul: "#5A4632" },
   voile: { lieu: "exterieur", nom: "Voile d’ombrage", l: 3.6, p: 3.6, h: 2.6, meuble: 1, couvre: "voile", coul: "#E9E3D5" },
   lanterne: { lieu: "exterieur", nom: "Lanterne", l: 0.25, p: 0.25, h: 0.4, meuble: 1, rond: 1, coul: "#2E2A27" },
-  douche: { lieu: "exterieur", nom: "Douche solaire", l: 0.4, p: 0.4, h: 2.2, meuble: 1, coul: "#9A9A96" },
+  douchesol: { lieu: "exterieur", nom: "Douche solaire", l: 0.4, p: 0.4, h: 2.2, meuble: 1, coul: "#9A9A96" },
   velo: { lieu: "exterieur", nom: "Range-vélos", l: 1.8, p: 0.6, h: 1, meuble: 1, coul: "#6B6F6C" },
-  escalier: { lieu: "interieur", nom: "Escalier", l: 0.9, p: 3, coul: "#D8D2C6" },
-  poteau: { lieu: "interieur", nom: "Poteau", l: 0.3, p: 0.3, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
-  poteaurond: { lieu: "interieur", nom: "Poteau rond", l: 0.3, p: 0.3, h: 2.5, rond: 1, plinthe: 1, coul: "#BDB8AE" },
-  cloison: { lieu: "interieur", nom: "Cloison", l: 3, p: 0.1, h: 2.5, plinthe: 1, coul: "#30342F" },
-  gaine: { lieu: "interieur", nom: "Gaine technique", l: 0.4, p: 0.4, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
-  cheminee: { lieu: "interieur", nom: "Cheminée", l: 1.2, p: 0.5, h: 1.1, coul: "#A69C8D" },
-  ilot: { lieu: "interieur", nom: "Îlot de cuisine", l: 1.8, p: 0.9, h: 0.9, coul: "#C9B79C" },
-  cuisine: { lieu: "interieur", nom: "Meuble de cuisine", l: 2.4, p: 0.6, h: 0.9, coul: "#C9B79C" },
-  baignoire: { lieu: "interieur", nom: "Baignoire", l: 1.7, p: 0.75, h: 0.55, coul: "#F2F2EE" },
-  douche: { lieu: "interieur", nom: "Receveur de douche", l: 0.9, p: 0.9, h: 0.06, coul: "#E8EEF0" },
-  vasque: { lieu: "interieur", nom: "Meuble vasque", l: 0.8, p: 0.5, h: 0.85, coul: "#C9B79C" }
+  escalier: { lieu: "interieur", cat: "structure", nom: "Escalier", l: 0.9, p: 3, coul: "#D8D2C6" },
+  poteau: { lieu: "interieur", cat: "structure", nom: "Poteau", l: 0.3, p: 0.3, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
+  poteaurond: { lieu: "interieur", cat: "structure", nom: "Poteau rond", l: 0.3, p: 0.3, h: 2.5, rond: 1, plinthe: 1, coul: "#BDB8AE" },
+  cloison: { lieu: "interieur", cat: "structure", nom: "Cloison", l: 3, p: 0.1, h: 2.5, plinthe: 1, coul: "#30342F" },
+  gaine: { lieu: "interieur", cat: "structure", nom: "Gaine technique", l: 0.4, p: 0.4, h: 2.5, plinthe: 1, coul: "#BDB8AE" },
+  cheminee: { lieu: "interieur", cat: "salon", nom: "Cheminée", l: 1.2, p: 0.5, h: 1.1, coul: "#A69C8D" },
+  ilot: { lieu: "interieur", cat: "cuisine", nom: "Îlot de cuisine", l: 1.8, p: 0.9, h: 0.9, coul: "#C9B79C" },
+  cuisine: { lieu: "interieur", cat: "cuisine", nom: "Meubles bas en ligne", l: 2.4, p: 0.6, h: 0.9, coul: "#C9B79C" },
+  baignoire: { lieu: "interieur", cat: "sdb", nom: "Baignoire", l: 1.7, p: 0.75, h: 0.55, coul: "#F2F2EE" },
+  douche: { lieu: "interieur", cat: "sdb", nom: "Receveur de douche", l: 0.9, p: 0.9, h: 0.06, coul: "#E8EEF0" },
+  vasque: { lieu: "interieur", cat: "sdb", nom: "Meuble vasque", l: 0.8, p: 0.5, h: 0.85, coul: "#C9B79C" },
+  /* Mobilier intérieur par pièce : sans effet sur le métré, pour vérifier la place et le rendu. */
+  // Cuisine
+  meublebas: { lieu: "interieur", cat: "cuisine", nom: "Meuble bas 60", l: 0.6, p: 0.6, h: 0.9, meuble: 1, forme: "cuisine", coul: "#C9B79C" },
+  meublebas80: { lieu: "interieur", cat: "cuisine", nom: "Meuble bas 80", l: 0.8, p: 0.6, h: 0.9, meuble: 1, forme: "cuisine", coul: "#C9B79C" },
+  meubleangle: { lieu: "interieur", cat: "cuisine", nom: "Meuble bas d’angle", l: 0.9, p: 0.9, h: 0.9, meuble: 1, forme: "cuisine", coul: "#C9B79C" },
+  evier: { lieu: "interieur", cat: "cuisine", nom: "Meuble évier", l: 0.8, p: 0.6, h: 0.9, meuble: 1, forme: "evier", coul: "#C9B79C" },
+  cuisson: { lieu: "interieur", cat: "cuisine", nom: "Plaque de cuisson", l: 0.6, p: 0.6, h: 0.9, meuble: 1, forme: "cuisson", coul: "#C9B79C" },
+  piano: { lieu: "interieur", cat: "cuisine", nom: "Piano de cuisson", l: 0.9, p: 0.6, h: 0.9, meuble: 1, forme: "cuisson", coul: "#3A3D3F" },
+  four: { lieu: "interieur", cat: "cuisine", nom: "Colonne four", l: 0.6, p: 0.6, h: 2.1, meuble: 1, forme: "colonne", coul: "#C9B79C" },
+  frigo: { lieu: "interieur", cat: "cuisine", nom: "Réfrigérateur", l: 0.6, p: 0.65, h: 1.85, meuble: 1, forme: "elec", coul: "#E6E6E2" },
+  frigous: { lieu: "interieur", cat: "cuisine", nom: "Réfrigérateur américain", l: 0.9, p: 0.75, h: 1.8, meuble: 1, forme: "elec", coul: "#8A8D90" },
+  lavevaisselle: { lieu: "interieur", cat: "cuisine", nom: "Lave-vaisselle", l: 0.6, p: 0.6, h: 0.85, meuble: 1, forme: "elec", coul: "#D9D9D5" },
+  tablecuisine: { lieu: "interieur", cat: "cuisine", nom: "Table de cuisine", l: 1.2, p: 0.8, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  tabouret: { lieu: "interieur", cat: "cuisine", nom: "Tabouret de bar", l: 0.4, p: 0.4, h: 0.75, meuble: 1, rond: 1, forme: "rond", coul: "#3A3D3F" },
+  chaisecuisine: { lieu: "interieur", cat: "cuisine", nom: "Chaise", l: 0.45, p: 0.5, h: 0.9, meuble: 1, forme: "chaise", coul: "#3A3D3F" },
+  // Salle de bain
+  baignoireangle: { lieu: "interieur", cat: "sdb", nom: "Baignoire d’angle", l: 1.4, p: 1.4, h: 0.55, meuble: 1, forme: "baignoire", coul: "#F2F2EE" },
+  douche120: { lieu: "interieur", cat: "sdb", nom: "Douche 120 × 90", l: 1.2, p: 0.9, h: 0.06, meuble: 1, forme: "douche", coul: "#E8EEF0" },
+  doucheital: { lieu: "interieur", cat: "sdb", nom: "Douche à l’italienne", l: 1.4, p: 0.9, h: 0.02, meuble: 1, forme: "douche", coul: "#E8EEF0" },
+  doublevasque: { lieu: "interieur", cat: "sdb", nom: "Meuble double vasque", l: 1.2, p: 0.5, h: 0.85, meuble: 1, forme: "lavabo", coul: "#C9B79C" },
+  lavabo: { lieu: "interieur", cat: "sdb", nom: "Lavabo sur colonne", l: 0.55, p: 0.45, h: 0.85, meuble: 1, forme: "lavabo", coul: "#F2F2EE" },
+  wc: { lieu: "interieur", cat: "sdb", nom: "WC", l: 0.38, p: 0.65, h: 0.8, meuble: 1, forme: "wc", coul: "#F2F2EE" },
+  wcsuspendu: { lieu: "interieur", cat: "sdb", nom: "WC suspendu", l: 0.38, p: 0.55, h: 0.45, meuble: 1, forme: "wc", coul: "#F2F2EE" },
+  bidet: { lieu: "interieur", cat: "sdb", nom: "Bidet", l: 0.38, p: 0.55, h: 0.4, meuble: 1, forme: "wc", coul: "#F2F2EE" },
+  lavelinge: { lieu: "interieur", cat: "sdb", nom: "Lave-linge", l: 0.6, p: 0.6, h: 0.85, meuble: 1, forme: "hublot", coul: "#E6E6E2" },
+  sechelinge: { lieu: "interieur", cat: "sdb", nom: "Sèche-linge", l: 0.6, p: 0.6, h: 0.85, meuble: 1, forme: "hublot", coul: "#E6E6E2" },
+  colonnesdb: { lieu: "interieur", cat: "sdb", nom: "Colonne de rangement", l: 0.4, p: 0.35, h: 1.8, meuble: 1, forme: "armoire", coul: "#C9B79C" },
+  secheserviette: { lieu: "interieur", cat: "sdb", nom: "Sèche-serviettes", l: 0.6, p: 0.1, h: 1.2, meuble: 1, forme: "radiateur", coul: "#E6E6E2" },
+  radiateur: { lieu: "interieur", cat: "sdb", nom: "Radiateur", l: 0.8, p: 0.1, h: 0.6, meuble: 1, forme: "radiateur", coul: "#E6E6E2" },
+  // Salon
+  canape2: { lieu: "interieur", cat: "salon", nom: "Canapé 2 places", l: 1.6, p: 0.9, h: 0.85, meuble: 1, forme: "canape", coul: "#8E8A80" },
+  canape3: { lieu: "interieur", cat: "salon", nom: "Canapé 3 places", l: 2.1, p: 0.95, h: 0.85, meuble: 1, forme: "canape", coul: "#8E8A80" },
+  canapeangle: { lieu: "interieur", cat: "salon", nom: "Canapé d’angle", l: 2.6, p: 2, h: 0.85, meuble: 1, forme: "canapeL", coul: "#8E8A80" },
+  meridienne: { lieu: "interieur", cat: "salon", nom: "Méridienne", l: 1.7, p: 0.8, h: 0.75, meuble: 1, forme: "canape", coul: "#A69C8D" },
+  fauteuilint: { lieu: "interieur", cat: "salon", nom: "Fauteuil", l: 0.85, p: 0.85, h: 0.8, meuble: 1, forme: "fauteuil", coul: "#8E8A80" },
+  pouf: { lieu: "interieur", cat: "salon", nom: "Pouf", l: 0.5, p: 0.5, h: 0.4, meuble: 1, forme: "boite", coul: "#A69C8D" },
+  tablebasse: { lieu: "interieur", cat: "salon", nom: "Table basse", l: 1.1, p: 0.6, h: 0.4, meuble: 1, forme: "table", coul: "#B5916A" },
+  tablebasseronde: { lieu: "interieur", cat: "salon", nom: "Table basse ronde", l: 0.8, p: 0.8, h: 0.4, meuble: 1, rond: 1, forme: "rond", coul: "#B5916A" },
+  meubletv: { lieu: "interieur", cat: "salon", nom: "Meuble TV", l: 1.6, p: 0.45, h: 0.5, meuble: 1, forme: "rangement", coul: "#6B5B4A" },
+  bibliotheque: { lieu: "interieur", cat: "salon", nom: "Bibliothèque", l: 1.2, p: 0.35, h: 2, meuble: 1, forme: "armoire", coul: "#6B5B4A" },
+  buffet: { lieu: "interieur", cat: "salon", nom: "Buffet", l: 1.8, p: 0.5, h: 0.85, meuble: 1, forme: "rangement", coul: "#6B5B4A" },
+  pianodroit: { lieu: "interieur", cat: "salon", nom: "Piano droit", l: 1.5, p: 0.6, h: 1.2, meuble: 1, forme: "pianodroit", coul: "#1E1F20" },
+  poele: { lieu: "interieur", cat: "salon", nom: "Poêle à bois", l: 0.6, p: 0.6, h: 1.1, meuble: 1, rond: 1, forme: "rond", coul: "#2E2A27" },
+  lampadaire: { lieu: "interieur", cat: "salon", nom: "Lampadaire", l: 0.35, p: 0.35, h: 1.6, meuble: 1, rond: 1, forme: "lampe", coul: "#E9E3D5" },
+  planteint: { lieu: "interieur", cat: "salon", nom: "Plante", l: 0.5, p: 0.5, h: 1.4, meuble: 1, rond: 1, forme: "plante", coul: "#5A8A3E" },
+  tapis: { lieu: "interieur", cat: "salon", nom: "Tapis", l: 2, p: 1.4, h: 0.01, meuble: 1, forme: "tapis", libre: 1, coul: "#C9B9A2" },
+  // Salle à manger
+  table4: { lieu: "interieur", cat: "sam", nom: "Table 4 personnes", l: 1.2, p: 0.8, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  table6: { lieu: "interieur", cat: "sam", nom: "Table 6 personnes", l: 1.8, p: 0.9, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  table8: { lieu: "interieur", cat: "sam", nom: "Table 8 personnes", l: 2.2, p: 1, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  tableronde: { lieu: "interieur", cat: "sam", nom: "Table ronde", l: 1.2, p: 1.2, h: 0.75, meuble: 1, rond: 1, forme: "rond", coul: "#B5916A" },
+  chaisesam: { lieu: "interieur", cat: "sam", nom: "Chaise", l: 0.45, p: 0.5, h: 0.9, meuble: 1, forme: "chaise", coul: "#3A3D3F" },
+  bancsam: { lieu: "interieur", cat: "sam", nom: "Banc", l: 1.4, p: 0.4, h: 0.45, meuble: 1, forme: "boite", coul: "#B5916A" },
+  buffetsam: { lieu: "interieur", cat: "sam", nom: "Buffet", l: 1.8, p: 0.5, h: 0.85, meuble: 1, forme: "rangement", coul: "#6B5B4A" },
+  vaisselier: { lieu: "interieur", cat: "sam", nom: "Vaisselier", l: 1.2, p: 0.45, h: 2, meuble: 1, forme: "armoire", coul: "#6B5B4A" },
+  bar: { lieu: "interieur", cat: "sam", nom: "Bar", l: 1.6, p: 0.5, h: 1.1, meuble: 1, forme: "rangement", coul: "#3A3D3F" },
+  // Chambre
+  lit90: { lieu: "interieur", cat: "chambre", nom: "Lit 90", l: 0.9, p: 2, h: 0.5, meuble: 1, forme: "lit", coul: "#D9D2C4" },
+  lit140: { lieu: "interieur", cat: "chambre", nom: "Lit 140", l: 1.4, p: 2, h: 0.5, meuble: 1, forme: "lit", coul: "#D9D2C4" },
+  lit160: { lieu: "interieur", cat: "chambre", nom: "Lit 160", l: 1.6, p: 2, h: 0.5, meuble: 1, forme: "lit", coul: "#D9D2C4" },
+  lit180: { lieu: "interieur", cat: "chambre", nom: "Lit 180", l: 1.8, p: 2, h: 0.5, meuble: 1, forme: "lit", coul: "#D9D2C4" },
+  litbebe: { lieu: "interieur", cat: "chambre", nom: "Lit bébé", l: 0.65, p: 1.25, h: 0.9, meuble: 1, forme: "lit", coul: "#E9E3D5" },
+  litsuperpose: { lieu: "interieur", cat: "chambre", nom: "Lits superposés", l: 0.95, p: 2.05, h: 1.6, meuble: 1, forme: "lit", coul: "#B5916A" },
+  chevet: { lieu: "interieur", cat: "chambre", nom: "Table de chevet", l: 0.45, p: 0.4, h: 0.55, meuble: 1, forme: "rangement", coul: "#B5916A" },
+  armoire2: { lieu: "interieur", cat: "chambre", nom: "Armoire 2 portes", l: 1, p: 0.6, h: 2.1, meuble: 1, forme: "armoire", coul: "#B5916A" },
+  armoire3: { lieu: "interieur", cat: "chambre", nom: "Armoire 3 portes", l: 1.5, p: 0.6, h: 2.1, meuble: 1, forme: "armoire", coul: "#B5916A" },
+  dressing: { lieu: "interieur", cat: "chambre", nom: "Dressing", l: 2, p: 0.6, h: 2.3, meuble: 1, forme: "armoire", coul: "#E6E6E2" },
+  commode: { lieu: "interieur", cat: "chambre", nom: "Commode", l: 1.2, p: 0.5, h: 0.85, meuble: 1, forme: "rangement", coul: "#B5916A" },
+  coiffeuse: { lieu: "interieur", cat: "chambre", nom: "Coiffeuse", l: 1, p: 0.45, h: 0.75, meuble: 1, forme: "table", coul: "#E6E6E2" },
+  bureauchambre: { lieu: "interieur", cat: "chambre", nom: "Bureau", l: 1.2, p: 0.6, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  fauteuilchambre: { lieu: "interieur", cat: "chambre", nom: "Fauteuil", l: 0.8, p: 0.8, h: 0.8, meuble: 1, forme: "fauteuil", coul: "#8E8A80" },
+  // Bureau
+  bureau: { lieu: "interieur", cat: "bureau", nom: "Bureau", l: 1.4, p: 0.7, h: 0.75, meuble: 1, forme: "table", coul: "#B5916A" },
+  bureauangle: { lieu: "interieur", cat: "bureau", nom: "Bureau d’angle", l: 1.6, p: 1.6, h: 0.75, meuble: 1, forme: "bureauL", coul: "#B5916A" },
+  siegebureau: { lieu: "interieur", cat: "bureau", nom: "Fauteuil de bureau", l: 0.65, p: 0.65, h: 1.1, meuble: 1, rond: 1, forme: "rond", coul: "#3A3D3F" },
+  caisson: { lieu: "interieur", cat: "bureau", nom: "Caisson à tiroirs", l: 0.42, p: 0.55, h: 0.6, meuble: 1, forme: "rangement", coul: "#8A8D90" },
+  armoirebureau: { lieu: "interieur", cat: "bureau", nom: "Armoire de bureau", l: 0.9, p: 0.45, h: 1.8, meuble: 1, forme: "armoire", coul: "#8A8D90" },
+  etagere: { lieu: "interieur", cat: "bureau", nom: "Étagère", l: 0.8, p: 0.3, h: 1.8, meuble: 1, forme: "armoire", coul: "#B5916A" },
+  biblio2: { lieu: "interieur", cat: "bureau", nom: "Bibliothèque", l: 1.2, p: 0.35, h: 2, meuble: 1, forme: "armoire", coul: "#6B5B4A" },
+  tablereunion: { lieu: "interieur", cat: "bureau", nom: "Table de réunion", l: 2, p: 1, h: 0.75, meuble: 1, forme: "table", coul: "#E6E6E2" },
+  imprimante: { lieu: "interieur", cat: "bureau", nom: "Imprimante", l: 0.5, p: 0.4, h: 0.3, meuble: 1, forme: "boite", coul: "#8A8D90" },
+  // Entrée et buanderie
+  console: { lieu: "interieur", cat: "entree", nom: "Console", l: 1, p: 0.35, h: 0.8, meuble: 1, forme: "table", coul: "#6B5B4A" },
+  meublechaussures: { lieu: "interieur", cat: "entree", nom: "Meuble à chaussures", l: 0.8, p: 0.35, h: 1.2, meuble: 1, forme: "rangement", coul: "#E6E6E2" },
+  portemanteau: { lieu: "interieur", cat: "entree", nom: "Porte-manteau", l: 0.4, p: 0.4, h: 1.8, meuble: 1, rond: 1, forme: "lampe", coul: "#3A3D3F" },
+  placard: { lieu: "interieur", cat: "entree", nom: "Placard", l: 1.2, p: 0.6, h: 2.3, meuble: 1, forme: "armoire", coul: "#E6E6E2" },
+  banccoffre: { lieu: "interieur", cat: "entree", nom: "Banc coffre", l: 1, p: 0.4, h: 0.45, meuble: 1, forme: "boite", coul: "#B5916A" },
+  lavelinge2: { lieu: "interieur", cat: "entree", nom: "Lave-linge", l: 0.6, p: 0.6, h: 0.85, meuble: 1, forme: "hublot", coul: "#E6E6E2" },
+  sechelinge2: { lieu: "interieur", cat: "entree", nom: "Sèche-linge", l: 0.6, p: 0.6, h: 0.85, meuble: 1, forme: "hublot", coul: "#E6E6E2" },
+  chaudiere: { lieu: "interieur", cat: "entree", nom: "Chaudière", l: 0.6, p: 0.6, h: 0.9, meuble: 1, forme: "elec", coul: "#E6E6E2" },
+  ballon: { lieu: "interieur", cat: "entree", nom: "Ballon d’eau chaude", l: 0.55, p: 0.55, h: 1.6, meuble: 1, rond: 1, forme: "rond", coul: "#E6E6E2" },
+  congelateur: { lieu: "interieur", cat: "entree", nom: "Congélateur", l: 0.6, p: 0.65, h: 1.6, meuble: 1, forme: "elec", coul: "#E6E6E2" },
+  etendoir: { lieu: "interieur", cat: "entree", nom: "Étendoir", l: 1.6, p: 0.55, h: 1, meuble: 1, forme: "boite", coul: "#C9D3DA" }
 };
+const CATEGORIES_INT = [["structure", "Structure"], ["cuisine", "Cuisine"], ["sdb", "Salle de bain"], ["salon", "Salon"], ["sam", "Salle à manger"], ["chambre", "Chambre"], ["bureau", "Bureau"], ["entree", "Entrée · buanderie"]];
+let catInt = "structure";
 const copieForme = n => FORMES[n].map(([x, y]) => ({ x, y }));
 const etat = {
   id: 1, nom: "Pièce 1", pieces: [], active: 0, lieu: "exterieur", forme: "rectangle", poly: copieForme("rectangle"), angles: true,
@@ -830,7 +930,7 @@ function separer(A, B) {
   return { x: mieux.x * mieux.r, y: mieux.y * mieux.r };
 }
 /* Ce qui gêne au sol : un élément couvrant (pergola, voile, parasol) n'occupe que ses poteaux ou son mât, le reste passe au-dessus du mobilier. */
-const genant = (o, q) => o !== q && o.type !== "allee" && q.type !== "allee" && !(ELEMENTS[o.type].couvre && ELEMENTS[q.type].couvre);
+const genant = (o, q) => o !== q && !ELEMENTS[o.type].libre && !ELEMENTS[q.type].libre && !(ELEMENTS[o.type].couvre && ELEMENTS[q.type].couvre);
 function empreintes(o, jeu = 0) {
   const d = ELEMENTS[o.type]; if (!d.couvre) return [contour(o, jeu)];
   const a = o.rot * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), r = 0.07 + jeu, pts = d.couvre === "mat" ? [[0, 0]] : d.couvre === "voile" ? [[-o.l / 2, -o.p / 2], [o.l / 2, -o.p / 2], [0, o.p / 2]] : [[-o.l / 2, -o.p / 2], [o.l / 2, -o.p / 2], [o.l / 2, o.p / 2], [-o.l / 2, o.p / 2]];
@@ -1233,11 +1333,46 @@ function dessinerOuvertures() {
     ctx.restore();
   }
 }
+/* Mobilier intérieur : dessin en plan d'après la forme du catalogue (lit, canapé, table, armoire, appareil…). */
+function dessinerForme(g, o, d, z, rr, rond) {
+  const L = o.l, P = o.p, c = d.coul, cadre = "#3A3D3F", coussin = "#E9E4DA", bois = "#B5916A", clair = "#F2F2EE", eau = "#C9D3DA";
+  const trait = (x1, y1, x2, y2, col = "rgba(0,0,0,.28)", w = 1) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x1 * z, y1 * z); g.lineTo(x2 * z, y2 * z); g.stroke(); };
+  const cadreR = (x, y, w, h, col = "rgba(0,0,0,.28)") => { g.strokeStyle = col; g.lineWidth = 1; g.strokeRect(x * z, y * z, w * z, h * z); };
+  const ovale = (x, y, rx, ry, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x * z, y * z, rx * z, ry * z, 0, 0, 6.3); g.fill(); };
+  switch (d.forme) {
+    case "lit": { rr(-L / 2, -P / 2, L, P, bois, 0.03); rr(-L / 2 + 0.04, -P / 2 + 0.04, L - 0.08, P - 0.08, c, 0.04); const n = L > 1.2 ? 2 : 1, w = Math.min(0.6, (L - 0.16) / n - 0.06); for (let i = 0; i < n; i++) rr(n === 1 ? -w / 2 : -L / 2 + 0.08 + i * (L - 0.16 - w), -P / 2 + 0.08, w, Math.min(0.4, P * 0.2), "#FFFFFF", 0.06); trait(-L / 2 + 0.04, -P / 2 + Math.min(0.65, P * 0.32), L / 2 - 0.04, -P / 2 + Math.min(0.65, P * 0.32)); break; }
+    case "canape": rr(-L / 2, -P / 2, L, P, c, 0.08); rr(-L / 2 + 0.14, -P / 2 + 0.24, L - 0.28, P - 0.3, coussin, 0.05); for (let i = 1; i < Math.max(2, Math.round(L / 0.7)); i++) trait(-L / 2 + 0.14 + (L - 0.28) * i / Math.max(2, Math.round(L / 0.7)), -P / 2 + 0.24, -L / 2 + 0.14 + (L - 0.28) * i / Math.max(2, Math.round(L / 0.7)), P / 2 - 0.06); break;
+    case "canapeL": rr(-L / 2, -P / 2, L, 0.95, c, 0.08); rr(L / 2 - 0.95, -P / 2, 0.95, P, c, 0.08); rr(-L / 2 + 0.14, -P / 2 + 0.24, L - 0.4, 0.65, coussin, 0.05); rr(L / 2 - 0.81, -P / 2 + 0.9, 0.67, P - 1.02, coussin, 0.05); break;
+    case "fauteuil": rr(-L / 2, -P / 2, L, P, c, 0.12); rr(-L / 2 + 0.1, -P / 2 + 0.18, L - 0.2, P - 0.26, coussin, 0.08); break;
+    case "table": rr(-L / 2, -P / 2, L, P, c, 0.03); cadreR(-L / 2 + 0.04, -P / 2 + 0.04, L - 0.08, P - 0.08); break;
+    case "bureauL": rr(-L / 2, -P / 2, L, 0.7, c, 0.03); rr(-L / 2, -P / 2, 0.7, P, c, 0.03); break;
+    case "rond": rond(0, 0, L / 2, c); g.globalAlpha = 0.25; rond(0, 0, L / 2 - 0.05, "#FFFFFF"); g.globalAlpha = 1; break;
+    case "chaise": rr(-L / 2, -P / 2, L, P, cadre, 0.06); rr(-L / 2 + 0.04, -P / 2 + 0.1, L - 0.08, P - 0.14, coussin, 0.04); break;
+    case "armoire": case "colonne": { rr(-L / 2, -P / 2, L, P, c, 0.02); const n = Math.max(1, Math.round(L / 0.5)); for (let i = 1; i < n; i++) trait(-L / 2 + L * i / n, -P / 2, -L / 2 + L * i / n, P / 2); trait(-L / 2, P / 2 - 0.04, L / 2, P / 2 - 0.04); break; }
+    case "rangement": rr(-L / 2, -P / 2, L, P, c, 0.02); trait(-L / 2 + 0.03, 0, L / 2 - 0.03, 0); rond(0, P / 2 - 0.1, 0.02, cadre); break;
+    case "cuisine": rr(-L / 2, -P / 2, L, P, c, 0.02); trait(-L / 2, -P / 2 + 0.03, L / 2, -P / 2 + 0.03); trait(-L / 2, P / 2 - 0.05, L / 2, P / 2 - 0.05); break;
+    case "evier": rr(-L / 2, -P / 2, L, P, c, 0.02); rr(-L / 2 + 0.08, -0.17, L - 0.16, 0.34, eau, 0.06); if (L > 0.7) trait(0, -0.17, 0, 0.17); break;
+    case "cuisson": { rr(-L / 2, -P / 2, L, P, o.type === "piano" ? c : "#C9B79C", 0.02); rr(-L / 2 + 0.04, -P / 2 + 0.06, L - 0.08, P - 0.12, "#1E1F20", 0.02); const n = L > 0.8 ? 5 : 4, pts = n === 4 ? [[-0.14, -0.14], [0.14, -0.14], [-0.14, 0.14], [0.14, 0.14]] : [[-0.28, -0.14], [0, -0.14], [0.28, -0.14], [-0.14, 0.14], [0.14, 0.14]]; for (const [x, y] of pts) { rond(x, y, 0.08, "#4A4D50"); rond(x, y, 0.05, "#1E1F20"); } break; }
+    case "elec": rr(-L / 2, -P / 2, L, P, c, 0.02); trait(L / 2 - 0.08, -P / 2 + 0.08, L / 2 - 0.08, P / 2 - 0.08, "rgba(0,0,0,.35)", 2); break;
+    case "hublot": rr(-L / 2, -P / 2, L, P, c, 0.02); rond(0, 0.05, 0.17, cadre); rond(0, 0.05, 0.12, eau); break;
+    case "wc": if (o.type === "wc") rr(-L / 2, -P / 2, L, 0.18, c, 0.02); ovale(0, (o.type === "wc" ? 0.1 : 0), L / 2 - 0.02, (P - (o.type === "wc" ? 0.22 : 0.06)) / 2, c); ovale(0, (o.type === "wc" ? 0.12 : 0.02), L / 2 - 0.09, (P - (o.type === "wc" ? 0.22 : 0.06)) / 2 - 0.08, eau); break;
+    case "lavabo": { rr(-L / 2, -P / 2, L, P, c, 0.03); const n = L > 1 ? 2 : 1; for (let i = 0; i < n; i++) ovale(n === 1 ? 0 : -L / 4 + i * L / 2, 0.02, Math.min(0.2, L / (2 * n) - 0.08), Math.min(0.16, P / 2 - 0.08), eau); break; }
+    case "baignoire": rr(-L / 2, -P / 2, L, P, c, 0.08); rr(-L / 2 + 0.08, -P / 2 + 0.08, L - 0.16, P - 0.16, "#DCEAF0", 0.14); rond(L / 2 - 0.25, 0, 0.03, cadre); break;
+    case "douche": rr(-L / 2, -P / 2, L, P, c, 0.02); trait(-L / 2, -P / 2, L / 2, P / 2); trait(L / 2, -P / 2, -L / 2, P / 2); rond(0, 0, 0.04, "#9A9A96"); break;
+    case "radiateur": { rr(-L / 2, -P / 2, L, P, c, 0.01); const n = Math.max(2, Math.round(L / 0.05)); for (let i = 1; i < n; i++) trait(-L / 2 + L * i / n, -P / 2, -L / 2 + L * i / n, P / 2, "rgba(0,0,0,.2)"); break; }
+    case "tapis": g.globalAlpha = 0.8; rr(-L / 2, -P / 2, L, P, c, 0.02); g.globalAlpha = 1; cadreR(-L / 2 + 0.1, -P / 2 + 0.1, L - 0.2, P - 0.2, "rgba(0,0,0,.2)"); break;
+    case "pianodroit": rr(-L / 2, -P / 2, L, P, c, 0.02); rr(-L / 2 + 0.05, P / 2 - 0.2, L - 0.1, 0.15, clair, 0.01); break;
+    case "lampe": rond(0, 0, L / 2, c); rond(0, 0, 0.03, cadre); break;
+    case "plante": rond(0, 0, L / 2, "#6F5B4A"); for (const [x, y] of [[0, 0], [-0.12, -0.08], [0.12, -0.06], [0.02, 0.13], [-0.09, 0.1]]) rond(x * L, y * L, L * 0.26, c); break;
+    default: rr(-L / 2, -P / 2, L, P, c, 0.04);
+  }
+}
 function dessinerMeuble(g, o, z) {
   const t = o.type, d = ELEMENTS[t], coussin = "#E9E4DA", cadre = "#3A3D3F", bois = "#A98255", L = o.l, P = o.p;
   const rr = (x, y, w, h, c, r = 0.05) => { g.fillStyle = c; g.beginPath(); g.roundRect(x * z, y * z, w * z, h * z, r * z); g.fill(); };
   const rond = (x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x * z, y * z, r * z, 0, 6.3); g.fill(); };
   const sieges = (n, x0, x1, y, w = 0.42) => { for (let i = 0; i < n; i++) rr(x0 + (x1 - x0 - w) * (n > 1 ? i / (n - 1) : 0.5), y, w, 0.42, cadre); };
+  if (d.forme) { dessinerForme(g, o, d, z, rr, rond); return; }
   if (t === "salon") { rr(-L / 2, -P / 2, L, 0.8, cadre); rr(-L / 2, -P / 2, 0.8, P, cadre); rr(-L / 2 + 0.07, -P / 2 + 0.07, L - 0.14, 0.66, coussin); rr(-L / 2 + 0.07, -P / 2 + 0.07, 0.66, P - 0.14, coussin); rr(-0.1, -0.05, L / 2 - 0.1, 0.7, bois); }
   else if (t === "repas" || t === "repas8") { const n = t === "repas" ? 3 : 4; sieges(n, -L / 2 + 0.25, L / 2 - 0.25, -P / 2); sieges(n, -L / 2 + 0.25, L / 2 - 0.25, P / 2 - 0.42); rr(-L / 2 + 0.05, -0.48, L - 0.1, 0.96, bois); }
   else if (t === "bistrot") { rond(0, 0, 0.35, bois); sieges(1, -0.21, 0.21, -P / 2); sieges(1, -0.21, 0.21, P / 2 - 0.42); }
@@ -1278,7 +1413,7 @@ function dessinerElements() {
       chemin(ext); ctx.fillStyle = c.p.base; ctx.fill(); ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1.3; ctx.stroke();
       if (!d.rond) { ctx.lineWidth = 1; ctx.beginPath(); ext.forEach((q, i) => { const a = ecran(q), b = ecran(int[i]); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }); ctx.stroke(); }
     }
-    if (d.meuble) { const s = ecran(o); ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(o.rot * Math.PI / 180); ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3; dessinerMeuble(ctx, o, z); ctx.restore(); return; }
+    if (d.meuble) { const s = ecran(o); ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(o.rot * Math.PI / 180); ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3; dessinerMeuble(ctx, o, z); ctx.restore(); if (d.forme && !d.rond) etiquetteElement(o, d, s, z); return; }
     chemin(contour(o)); ctx.fillStyle = d.coul; ctx.fill(); ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1.4; ctx.stroke();
     const s = ecran(o); ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(o.rot * Math.PI / 180); ctx.scale(z, z); ctx.lineWidth = 1 / z; ctx.strokeStyle = "rgba(0,0,0,.55)";
     if (o.type === "escalier") {
@@ -1295,10 +1430,13 @@ function dessinerElements() {
       ctx.beginPath(); ctx.moveTo(-o.l / 2, -o.p / 2); ctx.lineTo(o.l / 2, o.p / 2); ctx.moveTo(o.l / 2, -o.p / 2); ctx.lineTo(-o.l / 2, o.p / 2); ctx.stroke();
     }
     ctx.restore();
-    ctx.font = "600 12px " + getComputedStyle(document.body).fontFamily; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const lt = ctx.measureText(d.nom).width, cadreT = Math.abs(Math.cos(o.rot * Math.PI / 180)) > 0.7 ? [o.l, o.p] : [o.p, o.l];
-    if (o.type !== "cloison" && cadreT[0] * z > lt + 8 && cadreT[1] * z > 18) { ctx.fillStyle = "#16201B"; ctx.fillText(d.nom, s.x, s.y); }
+    etiquetteElement(o, d, s, z);
   });
+}
+function etiquetteElement(o, d, s, z) {
+  ctx.font = "600 12px " + getComputedStyle(document.body).fontFamily; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const lt = ctx.measureText(d.nom).width, cadreT = Math.abs(Math.cos(o.rot * Math.PI / 180)) > 0.7 ? [o.l, o.p] : [o.p, o.l];
+  if (o.type !== "cloison" && cadreT[0] * z > lt + 8 && cadreT[1] * z > 18) { ctx.fillStyle = "#16201B"; ctx.fillText(d.nom, s.x, s.y); }
 }
 function pointsSpots() {
   const b = bords(), per = calepin.perimetre, r = [], rt = etat.cadre ? calepin.w / 2 : 0.14;
@@ -2040,12 +2178,19 @@ function afficherAjouts() {
   $("ajout-pieces").innerHTML = Object.entries(PIECES).map(([k, v]) => `<button type="button" data-n="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   $("ajout-zones").innerHTML = Object.entries(ZONES).map(([k, v]) => `<button type="button" data-z="${k}" aria-pressed="false">${v.nom}</button>`).join("");
   const boutons = l => l.map(([k, v]) => `<button type="button" data-t="${k}">${v.nom}</button>`).join(""), liste = Object.entries(ELEMENTS).filter(([, v]) => v.lieu === etat.lieu);
-  $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => !v.decor && !v.meuble)); $("ajout-decor").innerHTML = boutons(liste.filter(([, v]) => v.decor)); $("ajout-meubles").innerHTML = boutons(liste.filter(([, v]) => v.meuble));
+  if (ex) { $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => !v.decor && !v.meuble)); $("cat-int").hidden = true; $("aide-cat").hidden = true; }
+  else {
+    // Intérieur : catalogue par pièce (structure déduite du métré, puis mobilier de chaque pièce).
+    $("cat-int").hidden = false; $("cat-int").innerHTML = CATEGORIES_INT.map(([k, n]) => `<button type="button" role="tab" data-v="${k}" aria-pressed="${k === catInt}">${n}</button>`).join("");
+    $("ajout-elements").innerHTML = boutons(liste.filter(([, v]) => (v.cat || "structure") === catInt));
+    $("aide-cat").hidden = false; $("aide-cat").textContent = catInt === "structure" ? "Escalier, poteaux, cloisons et gaines sont déduits du métré et découpent le calepinage." : catInt === "cuisine" || catInt === "sdb" ? "Îlot, meubles en ligne, baignoire, receveur et meuble vasque sont déduits du métré ; le reste du mobilier sert à vérifier la place et le rendu." : "Mobilier à placer pour vérifier la place et le rendu, sans effet sur le métré. Il s’aimante aux murs.";
+  }
+  $("ajout-decor").innerHTML = boutons(liste.filter(([, v]) => v.decor)); $("ajout-meubles").innerHTML = boutons(liste.filter(([, v]) => v.meuble && !v.cat));
   const reel = !!(fond && fond.aerien);
   $("bloc-decor").hidden = !ex; $("bloc-reel").hidden = !reel; $("lire-pente").hidden = !reel || !ex;
   $("env-bat").setAttribute("aria-pressed", String(etat.envBat)); $("env-arbres").setAttribute("aria-pressed", String(etat.envArbres));
   $("bloc-pieces").hidden = ex; $("aide-ouvertures").hidden = !ex; $("titre-ouvertures").textContent = ex ? "Ouvertures de la maison" : "Ouvertures";
-  $("titre-elements").textContent = ex ? "Dans la terrasse" : "Escalier et éléments fixes";
+  $("titre-elements").textContent = ex ? "Dans la terrasse" : "Par pièce";
   $("chapo-elements").textContent = ex ? "La terrasse et sa structure se découpent autour de chaque élément." : "Placez ce qui change la pose : ouvertures, couloir, escalier, meubles fixes.";
 }
 function afficherLegende() {
@@ -2194,7 +2339,8 @@ function ajouterElement(e) {
   if (vue !== "plan") changerVue("plan");
   synchroniser(); cadrer();
 }
-$("ajout-elements").addEventListener("click", ajouterElement); $("ajout-decor").addEventListener("click", ajouterElement); $("ajout-meubles").addEventListener("click", ajouterElement);
+$("ajout-elements").addEventListener("click", ajouterElement);
+$("cat-int").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b) return; catInt = b.dataset.v; afficherAjouts(); }); $("ajout-decor").addEventListener("click", ajouterElement); $("ajout-meubles").addEventListener("click", ajouterElement);
 for (const [id, k] of [["env-bat", "envBat"], ["env-arbres", "envArbres"]]) $(id).addEventListener("click", () => { etat[k] = !etat[k]; $(id).setAttribute("aria-pressed", String(etat[k])); sceneModifiee(); });
 $("liste-elements").addEventListener("click", e => {
   const c = e.target.closest("[data-i]"); if (!c) return;
@@ -2571,6 +2717,33 @@ function decorReel(m, t, groupe) {
     inst.castShadow = true; groupe.add(inst); T.arbres = { inst, infos };
   }
 }
+/* Mobilier intérieur en 3D, d'après la forme du catalogue. */
+function forme3D(o, d, L, P, H, B, C, M, chaise, cadre, coussin, g) {
+  const hex = parseInt(d.coul.slice(1), 16), c = M(hex, 0.8), bois = M(0xB5916A, 0.7), blanc = M(0xFFFFFF, 0.9), eau = M(0xC9D3DA, 0.2), t = o.type;
+  const pieds = (h, ins = 0.05) => { for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B(0.05, h, 0.05, a * (L / 2 - ins), h / 2, b * (P / 2 - ins), cadre); };
+  switch (d.forme) {
+    case "lit": { const sup = t === "litsuperpose"; for (const y0 of sup ? [0, 1.1] : [0]) { B(L, 0.22, P, 0, y0 + 0.11, 0, bois); B(L - 0.06, 0.2, P - 0.06, 0, y0 + 0.32, 0, c); const n = L > 1.2 ? 2 : 1, w = Math.min(0.6, (L - 0.16) / n - 0.06); for (let i = 0; i < n; i++) B(w, 0.1, Math.min(0.4, P * 0.2), n === 1 ? 0 : -L / 2 + 0.08 + w / 2 + i * (L - 0.16 - w), y0 + 0.47, -P / 2 + 0.1 + Math.min(0.2, P * 0.1), blanc); } B(L, sup ? 1.6 : t === "litbebe" ? 0.9 : 0.9, 0.05, 0, (sup ? 1.6 : 0.9) / 2, -P / 2 + 0.025, bois); if (t === "litbebe") B(L, 0.9, 0.05, 0, 0.45, P / 2 - 0.025, bois); break; }
+    case "canape": B(L, 0.42, P, 0, 0.21, 0, c); B(L, 0.42, 0.2, 0, 0.63, -P / 2 + 0.1, c); B(0.14, 0.2, P, -L / 2 + 0.07, 0.52, 0, c); B(0.14, 0.2, P, L / 2 - 0.07, 0.52, 0, c); B(L - 0.3, 0.1, P - 0.32, 0, 0.47, 0.06, coussin); break;
+    case "canapeL": B(L, 0.42, 0.95, 0, 0.21, -P / 2 + 0.475, c); B(L, 0.42, 0.2, 0, 0.63, -P / 2 + 0.1, c); B(0.95, 0.42, P - 0.95, L / 2 - 0.475, 0.21, 0.475, c); B(0.2, 0.42, P - 0.95, L / 2 - 0.1, 0.63, 0.475, c); B(L - 1.1, 0.1, 0.65, -0.55, 0.47, -P / 2 + 0.56, coussin); B(0.67, 0.1, P - 1.05, L / 2 - 0.48, 0.47, 0.5, coussin); break;
+    case "fauteuil": B(L, 0.42, P, 0, 0.21, 0, c); B(L, 0.4, 0.18, 0, 0.62, -P / 2 + 0.09, c); B(0.14, 0.22, P, -L / 2 + 0.07, 0.53, 0, c); B(0.14, 0.22, P, L / 2 - 0.07, 0.53, 0, c); B(L - 0.3, 0.1, P - 0.3, 0, 0.47, 0.05, coussin); break;
+    case "table": B(L, 0.04, P, 0, H - 0.02, 0, c); pieds(H - 0.04); break;
+    case "bureauL": B(L, 0.04, 0.7, 0, H - 0.02, -P / 2 + 0.35, c); B(0.7, 0.04, P, -L / 2 + 0.35, H - 0.02, 0, c); B(0.05, H - 0.04, 0.05, L / 2 - 0.05, (H - 0.04) / 2, -P / 2 + 0.05, cadre); B(0.05, H - 0.04, 0.05, L / 2 - 0.05, (H - 0.04) / 2, -P / 2 + 0.65, cadre); B(0.05, H - 0.04, 0.05, -L / 2 + 0.05, (H - 0.04) / 2, P / 2 - 0.05, cadre); B(0.05, H - 0.04, 0.05, -L / 2 + 0.65, (H - 0.04) / 2, P / 2 - 0.05, cadre); B(0.05, H - 0.04, 0.05, -L / 2 + 0.05, (H - 0.04) / 2, -P / 2 + 0.05, cadre); break;
+    case "rond": if (t === "tableronde" || t === "tablebasseronde") { C(L / 2, L / 2, 0.04, H - 0.02, c); C(0.05, 0.1, H - 0.04, (H - 0.04) / 2, cadre); C(0.25, 0.25, 0.03, 0.015, cadre); } else if (t === "siegebureau") { C(0.25, 0.25, 0.05, 0.45, c); B(0.45, 0.45, 0.1, 0, 0.68, -0.18, c); C(0.03, 0.03, 0.4, 0.22, cadre); C(0.3, 0.3, 0.03, 0.015, cadre); } else C(L / 2, L / 2, H, H / 2, c); break;
+    case "chaise": chaise(0, 0, 0, Math.min(0.46, L)); break;
+    case "cuisine": case "evier": case "cuisson": B(L, H - 0.04, P, 0, (H - 0.04) / 2, 0, c); B(L + 0.02, 0.04, P + 0.02, 0, H - 0.02, 0, M(0xEDEAE3, 0.35)); if (d.forme === "evier") B(L - 0.16, 0.02, 0.34, 0, H + 0.005, 0, eau); if (d.forme === "cuisson") { const pts = L > 0.8 ? [[-0.28, -0.14], [0, -0.14], [0.28, -0.14], [-0.14, 0.14], [0.14, 0.14]] : [[-0.14, -0.14], [0.14, -0.14], [-0.14, 0.14], [0.14, 0.14]]; B(L - 0.08, 0.01, P - 0.12, 0, H + 0.005, 0, M(0x1E1F20, 0.4)); for (const [x, zz] of pts) { const r = C(0.07, 0.07, 0.01, H + 0.015, M(0x4A4D50, 0.6)); r.position.x = x; r.position.z = zz; } } break;
+    case "hublot": B(L, H, P, 0, H / 2, 0, c); { const h = C(0.17, 0.17, 0.02, 0.45, M(0x3A3D3F, 0.4)); h.rotation.x = Math.PI / 2; h.position.z = P / 2 + 0.01; } break;
+    case "wc": if (t === "wc") B(L, 0.42, 0.18, 0, 0.59, -P / 2 + 0.09, c); { const b = C(L / 2 - 0.02, L / 2 - 0.04, t === "wc" ? 0.4 : 0.36, t === "wc" ? 0.2 : 0.25, c); b.scale.z = (P - (t === "wc" ? 0.22 : 0.06)) / (L - 0.04); b.position.z = t === "wc" ? 0.1 : 0; } break;
+    case "lavabo": B(L, H - 0.03, P, 0, (H - 0.03) / 2, 0, c); B(L + 0.02, 0.03, P + 0.02, 0, H - 0.015, 0, M(0xEDEAE3, 0.35)); { const n = L > 1 ? 2 : 1; for (let i = 0; i < n; i++) B(Math.min(0.4, L / n - 0.16), 0.01, Math.min(0.32, P - 0.16), n === 1 ? 0 : -L / 4 + i * L / 2, H + 0.005, 0.02, eau); } break;
+    case "baignoire": B(L, H, P, 0, H / 2, 0, c); B(L - 0.16, 0.02, P - 0.16, 0, H + 0.005, 0, M(0xBFDDE6, 0.2)); break;
+    case "douche": B(L, H, P, 0, H / 2, 0, c); { const v = B(0.01, 2, P, L / 2, 1 + H, 0, new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.05, transparent: true, opacity: 0.35 })); v.castShadow = false; } break;
+    case "tapis": { const b = B(L, 0.012, P, 0, 0.006, 0, M(hex, 1)); b.castShadow = false; } break;
+    case "lampe": C(0.15, 0.15, 0.02, 0.01, cadre); C(0.015, 0.015, H - 0.3, (H - 0.3) / 2, cadre); if (t === "lampadaire") C(0.17, 0.2, 0.26, H - 0.15, M(hex, 0.9)); else for (let i = 0; i < 4; i++) { const k = C(0.015, 0.015, 0.25, H - 0.12, cadre); k.rotation.z = 0.8; k.rotation.y = i * Math.PI / 2; } break;
+    case "plante": C(L / 2 * 0.7, L / 2 * 0.6, 0.45, 0.22, M(0x6F5B4A)); { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(L / 2, 1), M(hex, 1)); f.position.y = H - L / 2; f.castShadow = true; g.add(f); } break;
+    case "pianodroit": B(L, H, P, 0, H / 2, 0, c); B(L - 0.1, 0.03, 0.15, 0, 0.75, P / 2 + 0.02, M(0xF2F2EE, 0.6)); B(L - 0.1, 0.06, 0.2, 0, 0.72, P / 2 + 0.05, c); break;
+    case "radiateur": B(L, H, P, 0, 0.15 + H / 2, 0, c); break;
+    case "rangement": case "armoire": case "colonne": case "elec": case "boite": default: B(L, H, P, 0, H / 2, 0, c); if (d.forme === "armoire" || d.forme === "colonne") { const n = Math.max(1, Math.round(L / 0.5)); for (let i = 1; i < n; i++) B(0.01, H - 0.1, 0.02, -L / 2 + L * i / n, H / 2, P / 2 + 0.005, cadre); } if (d.forme === "rangement") B(L - 0.1, 0.02, 0.02, 0, H / 2, P / 2 + 0.01, cadre); break;
+  }
+}
 function objetElement(o, m) {
   const d = ELEMENTS[o.type], g = new THREE.Group(), M = (c, r = 0.8) => new THREE.MeshStandardMaterial({ color: teinte(c), roughness: r });
   const B = (w, h, p, x, y, z, mat) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, p), mat); b.position.set(x, y, z); b.castShadow = b.receiveShadow = true; g.add(b); return b; };
@@ -2588,7 +2761,8 @@ function objetElement(o, m) {
   } else if (d.meuble) {
     const t = o.type, cadre = M(0x3A3D3F, 0.5), coussin = M(0xE6E0D4, 0.95), boisM = M(0xA98255, 0.7), L = o.l, P = o.p, H = t === "pergolabox" && o.ht ? o.ht : d.h;
     const chaise = (x, z, r = 0, w = 0.42) => { const c = new THREE.Group(); const q = (a, b, e, px, py, pz) => { const s = new THREE.Mesh(new THREE.BoxGeometry(a, b, e), cadre); s.position.set(px, py, pz); s.castShadow = true; c.add(s); }; q(w, 0.05, w, 0, 0.45, 0); q(w, 0.42, 0.04, 0, 0.66, -w / 2 + 0.02); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) q(0.03, 0.44, 0.03, a * (w / 2 - 0.03), 0.22, b * (w / 2 - 0.03)); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); };
-    if (t === "salon") { B(L, 0.3, 0.8, 0, 0.15, -P / 2 + 0.4, cadre); B(0.8, 0.3, P - 0.8, -L / 2 + 0.4, 0.15, 0.4, cadre); B(L - 0.1, 0.14, 0.7, 0, 0.37, -P / 2 + 0.4, coussin); B(0.7, 0.14, P - 0.9, -L / 2 + 0.4, 0.37, 0.4, coussin); B(L, 0.42, 0.14, 0, 0.5, -P / 2 + 0.07, cadre); B(0.14, 0.42, P - 0.14, -L / 2 + 0.07, 0.5, 0.07, cadre); B(L / 2 - 0.2, 0.06, 0.7, L / 4, 0.34, 0.3, boisM); }
+    if (d.forme) forme3D(o, d, L, P, H, B, C, M, chaise, cadre, coussin, g);
+    else if (t === "salon") { B(L, 0.3, 0.8, 0, 0.15, -P / 2 + 0.4, cadre); B(0.8, 0.3, P - 0.8, -L / 2 + 0.4, 0.15, 0.4, cadre); B(L - 0.1, 0.14, 0.7, 0, 0.37, -P / 2 + 0.4, coussin); B(0.7, 0.14, P - 0.9, -L / 2 + 0.4, 0.37, 0.4, coussin); B(L, 0.42, 0.14, 0, 0.5, -P / 2 + 0.07, cadre); B(0.14, 0.42, P - 0.14, -L / 2 + 0.07, 0.5, 0.07, cadre); B(L / 2 - 0.2, 0.06, 0.7, L / 4, 0.34, 0.3, boisM); }
     else if (t === "repas" || t === "repas8") { const n = t === "repas" ? 3 : 4; B(L - 0.1, 0.05, 0.96, 0, 0.75, 0, boisM); for (const [x, z] of [[-L / 2 + 0.15, -0.4], [L / 2 - 0.15, -0.4], [-L / 2 + 0.15, 0.4], [L / 2 - 0.15, 0.4]]) B(0.06, 0.74, 0.06, x, 0.37, z, cadre); for (let i = 0; i < n; i++) { const x = -L / 2 + 0.46 + (L - 0.92) * (i / (n - 1)); chaise(x, -P / 2 + 0.21, 0); chaise(x, P / 2 - 0.21, Math.PI); } }
     else if (t === "bistrot") { C(0.35, 0.35, 0.04, 0.72, boisM); C(0.03, 0.03, 0.7, 0.35, cadre, 12); C(0.25, 0.27, 0.03, 0.015, cadre); chaise(0, -P / 2 + 0.21, 0); chaise(0, P / 2 - 0.21, Math.PI); }
     else if (t === "chaise") chaise(0, 0, 0, 0.46);
