@@ -40,7 +40,7 @@ button { cursor: pointer; }
 h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 392px; grid-template-rows: 66px minmax(0, 1fr) 78px; }
+.app { height: 100%; display: grid; grid-template-columns: 392px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr) 78px; }
 .tete { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 0 18px; background: var(--panneau); border-bottom: 1px solid var(--ligne); min-width: 0; }
 .marque { display: flex; align-items: center; gap: 9px; flex: none; }
 .marque svg { width: 26px; height: 26px; }
@@ -54,23 +54,63 @@ h2, h3, p { margin: 0; }
 .etapes button.fait i { background: var(--accent); color: var(--sur-accent); }
 .enregistrer { flex: none; height: 40px; padding: 0 14px; border-radius: 10px; border: 1.5px solid var(--ligne); background: none; font-weight: 600; }
 
-.scene { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #6F8F4C; }
+.scene { position: relative; grid-column: 2; grid-row: 2; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #6F8F4C; }
 #plan, #calque { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #vue3d { position: absolute; inset: 0; background: #CFE3EE; cursor: grab; }
 #vue3d canvas { display: block; width: 100%; height: 100%; }
 .flottant { background: var(--panneau); border-radius: 12px; box-shadow: var(--ombre); }
-.vues { position: absolute; top: 14px; left: 14px; display: flex; gap: 2px; padding: 4px; z-index: 3; }
-.vues button { border: 0; background: transparent; border-radius: 9px; height: 38px; padding: 0 13px; color: var(--doux); font-weight: 600; }
+/* Barre d'outils au-dessus du plan, sur le modèle de calepinage.com : outils de l'étape à gauche, vues, historique et étape suivante à droite. */
+.barre-plan { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 4; display: flex; align-items: center; gap: 6px; padding: 5px; overflow: visible; }
+.barre-plan .sep { width: 1px; height: 26px; background: var(--ligne); flex: none; }
+.barre-plan .espace { flex: 1; min-width: 4px; }
+.ico { position: relative; flex: none; width: 40px; height: 40px; border: 0; background: transparent; border-radius: 9px; display: grid; place-items: center; color: var(--encre); }
+.ico:hover { background: var(--creux); }
+.ico[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); }
+.ico:disabled { opacity: .32; cursor: default; }
+.ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ico.texte { width: auto; padding: 0 10px; font-weight: 600; font-size: 13.5px; gap: 6px; grid-auto-flow: column; }
+[data-tip] { position: relative; }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%); z-index: 12; padding: 5px 9px; border-radius: 7px; background: var(--noir); color: var(--sur-noir); font: 600 12.5px/1.2 var(--texte); white-space: nowrap; pointer-events: none; box-shadow: var(--ombre); }
+.lateral [data-tip]:hover::after, .lateral [data-tip]:focus-visible::after { top: 50%; left: auto; right: calc(100% + 8px); transform: translateY(-50%); }
+.outils [data-tip]:hover::after, .outils [data-tip]:focus-visible::after, .importer[data-tip]:hover::after { top: auto; bottom: calc(100% + 7px); }
+.outils-etape { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.outils-etape::-webkit-scrollbar { display: none; }
+.outils-etape:empty { display: none; }
+.vues { display: flex; gap: 2px; flex: none; }
+.vues button { border: 0; background: transparent; border-radius: 9px; height: 40px; padding: 0 12px; color: var(--doux); font-weight: 600; }
 .vues button[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); }
-.ar { position: absolute; top: 14px; right: 14px; z-index: 3; height: 46px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--panneau); font-weight: 700; display: flex; align-items: center; gap: 8px; box-shadow: var(--ombre); }
+.etape-suiv { flex: none; height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--noir); color: var(--sur-noir); font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.etape-suiv svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ar { position: absolute; top: 66px; right: 14px; z-index: 3; height: 42px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--panneau); font-weight: 700; display: flex; align-items: center; gap: 8px; box-shadow: var(--ombre); }
 .ar svg { width: 19px; height: 19px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .outils { position: absolute; left: 14px; bottom: 14px; display: flex; padding: 4px; gap: 2px; z-index: 3; }
 .outils button { width: 38px; height: 38px; border: 0; background: transparent; border-radius: 9px; display: grid; place-items: center; }
 .outils button:hover { background: var(--creux); }
+.outils button[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); }
 .outils button:disabled { opacity: .32; cursor: default; }
 .outils svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.credit { position: absolute; right: 8px; bottom: 8px; z-index: 3; padding: 2px 7px; border-radius: 6px; background: rgba(255, 255, 255, .86); color: #222; font-size: 11.5px; }
-.legende { position: absolute; right: 14px; bottom: 14px; z-index: 3; padding: 10px 12px; display: grid; gap: 4px; font-size: 12.5px; max-width: 210px; }
+.lateral { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 3; display: grid; gap: 2px; padding: 4px; }
+.importer { position: absolute; right: 14px; bottom: 14px; z-index: 3; height: 42px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--panneau); font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: var(--ombre); }
+.importer svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.menu { position: absolute; z-index: 11; display: grid; gap: 2px; padding: 5px; min-width: 190px; }
+.menu button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; font-weight: 600; }
+.menu button:hover, .menu button[aria-pressed="true"] { background: var(--creux); }
+.menu button small { display: block; color: var(--doux); font-size: 12px; font-weight: 400; }
+/* Bulle d'édition de l'élément sélectionné (type, largeur, déplacer, tourner, supprimer). */
+.bulle { position: absolute; z-index: 7; display: flex; align-items: center; gap: 3px; padding: 5px; transform: translate(-50%, -50%); width: max-content; max-width: calc(100% - 24px); box-sizing: border-box; flex-wrap: wrap; justify-content: center; }
+.bulle .sep { width: 1px; height: 24px; background: var(--ligne); margin: 0 2px; }
+.bulle .ico { width: 36px; height: 36px; }
+.bulle .ico.texte { width: auto; padding: 0 9px; font-size: 13px; }
+.bulle .ico svg { width: 19px; height: 19px; }
+.bulle .ico[aria-pressed="true"] { background: var(--accent-doux); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.bulle .val { min-width: 62px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13.5px; line-height: 1.1; }
+.bulle .val small { display: block; color: var(--doux); font-size: 11px; font-weight: 500; }
+.bulle .nom { padding: 0 6px 0 8px; font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+.bulle .sup { height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #B3261E; font-weight: 700; font-size: 13.5px; }
+.bulle .sup:hover { background: #FBE9E7; }
+.bulle [data-bdep] { cursor: move; touch-action: none; }
+.credit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; z-index: 3; padding: 2px 7px; border-radius: 6px; background: rgba(255, 255, 255, .86); color: #222; font-size: 11.5px; white-space: nowrap; }
+.legende { position: absolute; right: 14px; bottom: 68px; z-index: 3; padding: 10px 12px; display: grid; gap: 4px; font-size: 12.5px; max-width: 210px; }
 .legende b { font-weight: 700; }
 .legende span { display: flex; align-items: center; gap: 7px; }
 .legende i { flex: none; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .3); }
@@ -78,9 +118,12 @@ h2, h3, p { margin: 0; }
 .bandeau input { width: 84px; min-height: 36px; padding: 0 8px; border: 1.5px solid var(--ligne); border-radius: 8px; background: var(--creux); font-weight: 700; box-sizing: border-box; }
 .bandeau button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--noir); color: var(--sur-noir); font-weight: 700; }
 #cote-edit { position: absolute; width: 84px; height: 32px; box-sizing: border-box; text-align: center; font-weight: 700; border: 2px solid var(--accent); border-radius: 8px; background: var(--panneau); z-index: 7; transform: translate(-50%, -50%); }
-#toast { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 8; pointer-events: none; padding: 9px 14px; background: var(--noir); color: var(--sur-noir); border-radius: 10px; font-weight: 600; max-width: calc(100% - 28px); box-sizing: border-box; text-align: center; }
+#toast { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); z-index: 8; pointer-events: none; padding: 9px 14px; background: var(--noir); color: var(--sur-noir); border-radius: 10px; font-weight: 600; max-width: calc(100% - 28px); box-sizing: border-box; text-align: center; }
 
-.options { background: var(--panneau); border-left: 1px solid var(--ligne); overflow: auto; padding: 20px 20px 24px; min-height: 0; }
+.options { grid-column: 1; grid-row: 2; background: var(--panneau); border-right: 1px solid var(--ligne); overflow: auto; padding: 20px 20px 24px; min-height: 0; }
+.projet-arbre { display: flex; align-items: center; gap: 6px; margin: -4px 0 14px; color: var(--doux); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+.projet-arbre b { color: var(--encre); overflow: hidden; text-overflow: ellipsis; }
+.projet-arbre svg { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .options h2 { font: 800 24px/1.15 var(--titre); letter-spacing: -.015em; }
 .chapo { margin: 6px 0 16px; color: var(--doux); font-weight: 400; }
 .options h3 { margin: 20px 0 8px; font: 700 15.5px/1.2 var(--titre); }
@@ -141,6 +184,8 @@ h2, h3, p { margin: 0; }
 .item small { display: block; color: var(--doux); font-size: 12.5px; font-weight: 400; }
 .item output { min-width: 50px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; }
 .item button { width: 34px; height: 34px; border: 0; border-radius: 8px; background: var(--panneau); font-weight: 700; }
+.item[data-sel] { cursor: pointer; }
+.item[aria-current="true"] { background: var(--accent-doux); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .barre { position: sticky; top: -20px; z-index: 2; margin: -6px 0 14px; overflow-x: auto; scrollbar-width: none; }
 .barre::-webkit-scrollbar { display: none; }
 .barre button { flex: none; padding: 4px 12px; white-space: nowrap; }
@@ -194,7 +239,7 @@ h2, h3, p { margin: 0; }
 .chiffre small { color: var(--doux); font-weight: 400; font-size: 12.5px; }
 .retour { flex: none; height: 50px; width: 50px; border-radius: 12px; border: 1.5px solid var(--ligne); background: none; display: grid; place-items: center; }
 .retour svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.suivant { flex: none; height: 50px; min-width: 214px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--accent); color: var(--sur-accent); font-weight: 700; white-space: nowrap; }
+.suivant { flex: none; height: 50px; min-width: 214px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--noir); color: var(--sur-noir); font-weight: 700; white-space: nowrap; }
 
 .c-ligne { stroke: #fff; stroke-width: 1.2; fill: none; opacity: .9; }
 .sombre .c-ligne { stroke: #16201B; opacity: .55; }
@@ -203,6 +248,8 @@ h2, h3, p { margin: 0; }
 .cote { cursor: pointer; }
 .sommet { fill: #fff; stroke: #16201B; stroke-width: 2.5; }
 .retirer .sommet { fill: #E0413A; stroke: #fff; }
+.cible .sommet { fill: #4CC2A9; stroke: #fff; }
+.cible [data-s] { cursor: pointer; }
 .prise { fill: #fff; stroke: #16201B; stroke-width: 2; }
 .tampon { fill: transparent; }
 .bord-actif { stroke: rgba(14, 107, 91, .001); stroke-width: 26; cursor: copy; }
@@ -214,12 +261,16 @@ h2, h3, p { margin: 0; }
 [data-el] { cursor: move; }
 .autre-piece { fill: transparent; cursor: pointer; }
 [data-room] { cursor: pointer; }
-.sel { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 6 4; }
+.sel { fill: rgba(76, 194, 169, .22); stroke: #4CC2A9; stroke-width: 2.5; }
+.sel-ouv { fill: rgba(76, 194, 169, .45); stroke: #0E6B5B; stroke-width: 2; pointer-events: none; }
+.c-sel { stroke: #4CC2A9; stroke-width: 1.6; fill: none; }
+.sombre .c-sel { stroke: #0E6B5B; }
+.c-pastille.sel-t { fill: #0E6B5B; }
 [data-rot] { cursor: grab; }
 .rot-lien { stroke: #16201B; stroke-width: 2; stroke-dasharray: 4 4; fill: none; }
-.sombre .sel { stroke: #0E6B5B; }
-.mini { fill: #16201B; cursor: pointer; }
-.mini-t { fill: #fff; font: 700 15px var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.sombre .sel { stroke: #0E6B5B; fill: rgba(14, 107, 91, .16); }
+[data-p] .tampon { cursor: move; }
+[data-p]:hover .tampon { fill: rgba(76, 194, 169, .25); }
 
 .feuille { position: fixed; inset: 0; z-index: 20; background: rgba(10, 16, 13, .5); display: grid; place-items: center; padding: 16px; box-sizing: border-box; }
 .feuille-carte { width: min(560px, 100%); max-height: 100%; overflow: auto; background: var(--panneau); border-radius: 18px; padding: 18px; box-sizing: border-box; box-shadow: var(--ombre); }
@@ -236,28 +287,34 @@ h2, h3, p { margin: 0; }
 @media (max-width: 1180px) { .marque strong { display: none; } .etapes button { padding: 0 8px; } }
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 54px minmax(0, 46fr) minmax(0, 54fr) 72px; }
+  .scene { grid-column: 1; grid-row: 2; }
   .tete { padding: 0 10px; gap: 8px; }
   .marque, .enregistrer { display: none; }
   .etapes { justify-content: flex-start; }
   .etapes button span { display: none; }
   .etapes button[aria-current="step"] span { display: inline; }
-  .options { border-left: 0; border-top: 1px solid var(--ligne); padding: 14px 14px 18px; }
+  .options { grid-column: 1; grid-row: 3; border-right: 0; border-top: 1px solid var(--ligne); padding: 14px 14px 18px; }
   .options h2 { font-size: 20px; }
   .barre { top: -14px; }
   .chapo { margin-bottom: 12px; font-size: 14px; }
-  .vues { top: 8px; left: 8px; }
-  .vues button { height: 34px; padding: 0 10px; font-size: 13.5px; }
-  .ar { top: 8px; right: 8px; height: 42px; padding: 0 10px; font-size: 13.5px; }
+  .barre-plan { top: 8px; left: 8px; right: 8px; padding: 3px; gap: 3px; }
+  .ico { width: 36px; height: 36px; }
+  .vues button { height: 36px; padding: 0 8px; font-size: 13px; }
+  .etape-suiv, .barre-plan .sep.fin, #reinit { display: none; }
+  .ar { top: 56px; right: 8px; height: 38px; padding: 0 10px; font-size: 13px; }
+  .lateral { display: none; }
+  .importer { right: 8px; bottom: 8px; height: 38px; padding: 0 10px; font-size: 13px; }
+  .importer span { display: none; }
   .outils { left: 8px; bottom: 8px; }
   .outils button { width: 34px; height: 34px; }
-  .legende { right: 8px; bottom: 8px; max-width: 150px; padding: 6px 8px; font-size: 11.5px; }
+  .legende { right: 8px; bottom: 56px; max-width: 150px; padding: 6px 8px; font-size: 11.5px; }
   .pied { padding: 0 10px; gap: 8px; }
   .resume { display: none; }
   .chiffre { text-align: left; flex: 1; }
   .chiffre b { font-size: 22px; }
   .suivant { min-width: 0; }
   .bandeau { top: 58px; }
-  #toast { top: 58px; }
+  #toast { bottom: 58px; }
 }
 </style>
 
@@ -278,19 +335,37 @@ h2, h3, p { margin: 0; }
     <svg id="calque"></svg>
     <div id="vue3d" hidden></div>
     <input id="cote-edit" type="text" inputmode="decimal" aria-label="Longueur en mètres" hidden>
-    <div class="vues flottant" role="group" aria-label="Affichage">
-      <button type="button" data-vue="plan" aria-pressed="true">Plan</button>
-      <button type="button" data-vue="structure" id="vue-structure" aria-pressed="false">Structure</button>
-      <button type="button" data-vue="3d" aria-pressed="false">3D</button>
+    <div class="barre-plan flottant" id="barre-plan" role="toolbar" aria-label="Outils du plan">
+      <div class="outils-etape" id="outils-etape" role="group" aria-label="Outils de l’étape"></div>
+      <div class="espace"></div>
+      <div class="vues" role="group" aria-label="Affichage">
+        <button type="button" data-vue="plan" aria-pressed="true">Plan</button>
+        <button type="button" data-vue="structure" id="vue-structure" aria-pressed="false">Structure</button>
+        <button type="button" data-vue="3d" aria-pressed="false">3D</button>
+      </div>
+      <div class="sep"></div>
+      <button class="ico" type="button" id="annuler" aria-label="Annuler" data-tip="Annuler" disabled><svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h11a5 5 0 0 1 5 5"/></svg></button>
+      <button class="ico" type="button" id="refaire" aria-label="Rétablir" data-tip="Rétablir" disabled><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M20 12H9a5 5 0 0 0-5 5"/></svg></button>
+      <button class="ico" type="button" id="reinit" aria-label="Tout recommencer" data-tip="Tout recommencer"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5"/></svg></button>
+      <div class="sep fin"></div>
+      <button class="etape-suiv" type="button" id="suivant-plan">Suivant<svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg></button>
     </div>
     <button class="ar" id="btn-ar" type="button"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 7l5 3v5l-5 3-5-3v-5z"/></svg>Voir chez moi</button>
-    <div class="outils flottant" role="group" aria-label="Zoom et historique">
-      <button type="button" id="z-moins" aria-label="Dézoomer"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-      <button type="button" id="z-plus" aria-label="Zoomer"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-      <button type="button" id="z-cadre" aria-label="Recadrer"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-      <button type="button" id="annuler" aria-label="Annuler" disabled><svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h11a5 5 0 0 1 5 5"/></svg></button>
-      <button type="button" id="refaire" aria-label="Rétablir" disabled><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M20 12H9a5 5 0 0 0-5 5"/></svg></button>
+    <div class="lateral flottant" id="lateral" role="group" aria-label="Affichage du plan">
+      <button class="ico" type="button" id="lat-deplacer" aria-label="Déplacer l’ensemble" data-tip="Déplacer l’ensemble" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4"/></svg></button>
+      <button class="ico" type="button" id="lat-tourner" aria-label="Tourner la terrasse" data-tip="Tourner la terrasse" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
+      <button class="ico" type="button" id="lat-cotes" aria-label="Afficher les cotes" data-tip="Cotes" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M7 9v6M17 9v6M3 6v3M21 6v3M3 15v3M21 15v3"/></svg></button>
+      <button class="ico" type="button" id="lat-aide" aria-label="Aide sur cette étape" data-tip="Aide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 17h.01"/></svg></button>
     </div>
+    <div class="outils flottant" role="group" aria-label="Zoom">
+      <button type="button" id="z-main" aria-label="Déplacer la vue" data-tip="Déplacer la vue" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V11m0-5.5a1.5 1.5 0 0 1 3 0V11m0-3.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.9-2.5L3.3 13.6a1.5 1.5 0 0 1 2.4-1.8L9 15V7.5a1.5 1.5 0 0 1 0 0"/></svg></button>
+      <button type="button" id="z-plus" aria-label="Zoomer" data-tip="Zoomer"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button type="button" id="z-cadre" aria-label="Ajuster à la fenêtre" data-tip="Ajuster"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button type="button" id="z-moins" aria-label="Dézoomer" data-tip="Dézoomer"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+    </div>
+    <button class="importer" id="importer" type="button" data-tip="PDF ou image, avec réglage de l’échelle"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4M5 15v4h14v-4"/></svg><span>Importer un plan</span></button>
+    <div class="menu flottant" id="menu" hidden></div>
+    <div class="bulle flottant" id="bulle" hidden></div>
     <div class="legende flottant" id="legende" hidden></div>
     <div class="credit" id="credit" hidden>Vue aérienne et bâtiments : IGN</div>
     <div class="bandeau flottant" id="bandeau" role="status" hidden></div>
@@ -298,6 +373,7 @@ h2, h3, p { margin: 0; }
   </div>
 
   <aside class="options" id="options" aria-label="Réglages">
+    <div class="projet-arbre" id="projet-arbre"></div>
     <div class="groupe barre" id="barre-pieces" role="group" aria-label="Pièces" hidden></div>
     <section data-etape="projet">
       <h2>Que voulez-vous poser ?</h2>
@@ -614,7 +690,8 @@ const etat = {
   produit: "pin", dims: {}, angle: 0, motif: "aleatoire", depart: "fin", graine: 7, marge: 5,
   cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true, rotation: 0
 };
-let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1;
+let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1, choixO = -1, choixM = -1, cotes = true, deplacer = false, tourner = false;
+function choisir(liste, i) { choix = liste === "elements" ? i : -1; choixO = liste === "ouvertures" ? i : -1; choixM = liste === "marches" ? i : -1; }
 let cam = { z: 60, ox: 0, oy: 0 }, calepin = null, fond = null, mode = null, calibration = [];
 const passe = [], futur = [];
 let OUV_MONDE = [];
@@ -726,6 +803,40 @@ function aimanter(o) {
     const pts = contour(o), rs = pts.map(P => (P.x - b.A.x) * b.nx + (P.y - b.A.y) * b.ny), ss = pts.map(P => (P.x - b.A.x) * b.ux + (P.y - b.A.y) * b.uy), r = Math.max(...rs);
     if (Math.abs(r) < tol && Math.max(...ss) > 0 && Math.min(...ss) < b.len) { o.x -= b.nx * r; o.y -= b.ny * r; }
   }
+}
+/* Les éléments ne se chevauchent pas : vecteur de séparation minimal entre deux emprises convexes (théorème des axes séparateurs). */
+function separer(A, B) {
+  let mieux = null;
+  for (const P of [A, B]) for (let i = 0; i < P.length; i++) {
+    const p = P[i], q = P[(i + 1) % P.length]; let nx = -(q.y - p.y), ny = q.x - p.x; const L = Math.hypot(nx, ny) || 1; nx /= L; ny /= L;
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+    for (const v of A) { const d = v.x * nx + v.y * ny; if (d < a0) a0 = d; if (d > a1) a1 = d; }
+    for (const v of B) { const d = v.x * nx + v.y * ny; if (d < b0) b0 = d; if (d > b1) b1 = d; }
+    const r = Math.min(a1, b1) - Math.max(a0, b0);
+    if (r <= 0) return null;
+    if (!mieux || r < mieux.r) { const s = (a0 + a1) / 2 < (b0 + b1) / 2 ? -1 : 1; mieux = { r, x: nx * s, y: ny * s }; }
+  }
+  return { x: mieux.x * mieux.r, y: mieux.y * mieux.r };
+}
+const genant = (o, q) => o !== q && o.type !== "allee" && q.type !== "allee";
+function libre(o, i, jeu = 0.005) { const c = contour(o, jeu); return !etat.elements.some((q, k) => k !== i && genant(o, q) && chevauche(c, contour(q))); }
+function ecarter(o, i) {
+  for (let n = 0; n < 16; n++) {
+    let bouge = false;
+    etat.elements.forEach((q, k) => { if (k === i || !genant(o, q)) return; const v = separer(contour(o, 0.02), contour(q)); if (v) { o.x += v.x; o.y += v.y; bouge = true; } });
+    if (!bouge) return true;
+  }
+  return libre(o, i);
+}
+function placerLibre(o, i) {
+  const x0 = o.x, y0 = o.y, d = ELEMENTS[o.type];
+  if (libre(o, i)) return true;
+  for (const strict of [true, false]) for (let r = 0.5; r <= 14; r += 0.5) for (let k = 0; k < 24; k++) {
+    const a = k / 24 * 2 * Math.PI; o.x = arrondi(x0 + Math.cos(a) * r); o.y = arrondi(y0 + Math.sin(a) * r);
+    if (strict && dansPoly(o, etat.poly) === !!d.decor) continue;
+    if (libre(o, i)) return true;
+  }
+  o.x = x0; o.y = y0; return false;
 }
 function origine(min, max, pasM, t, modeO) {
   const T = max - min + (pasM - t), n = Math.floor(T / pasM + 1e-9), r = T - n * pasM;
@@ -1044,16 +1155,29 @@ function dessinerMarches() {
 function dessinerMurs() {
   ctx.beginPath(); tracerPoly(decaler(etat.poly, -0.16), false); tracerPoly(etat.poly, false); ctx.fillStyle = "#30342F"; ctx.fill("evenodd");
 }
+const EP_MUR = 0.22;
 function dessinerOuvertures() {
+  // Extérieur : le mur de la maison court le long de chaque bord qui porte une ouverture, hors de la terrasse (côté normale sortante).
+  if (calepin.estExt && etat.ouvertures.length) {
+    const bordsMaison = new Set(etat.ouvertures.map(o => ancrage(o).i));
+    for (const b of bords()) {
+      if (!bordsMaison.has(b.i)) continue;
+      ctx.save(); transformBord({ ...b, cx: (b.A.x + b.B.x) / 2, cy: (b.A.y + b.B.y) / 2 });
+      ctx.fillStyle = "#EDE9E0"; ctx.fillRect(-b.len / 2 - 0.3, 0.01, b.len + 0.6, EP_MUR);
+      ctx.fillStyle = "rgba(0,0,0,.08)"; for (let x = -b.len / 2 - 0.3; x < b.len / 2 + 0.3; x += 0.5) ctx.fillRect(x, 0.01, 0.25, EP_MUR);
+      ctx.lineWidth = 1.6 / cam.z; ctx.strokeStyle = "#16201B"; ctx.strokeRect(-b.len / 2 - 0.3, 0.01, b.len + 0.6, EP_MUR);
+      ctx.restore();
+    }
+  }
   for (const o of etat.ouvertures) {
     const d = OUVERTURES[o.type], a = ancrage(o), g = -a.l / 2; ctx.save(); transformBord(a);
     if (d.ext) {
-      const ep = 0.22, zz = cam.z;
-      ctx.fillStyle = "#B4694F"; ctx.fillRect(g - 0.12, -ep, a.l + 0.24, ep); ctx.fillStyle = d.pleine ? "#8C6A48" : "#CFE3EE"; ctx.fillRect(g, -ep + 0.03, a.l, ep - 0.06);
-      ctx.lineWidth = 1.4 / zz; ctx.strokeStyle = "#16201B"; ctx.strokeRect(g, -ep + 0.03, a.l, ep - 0.06);
-      const nv = d.vantaux || 1; ctx.beginPath(); for (let k = 1; k < nv; k++) { ctx.moveTo(g + a.l * k / nv, -ep + 0.03); ctx.lineTo(g + a.l * k / nv, -0.03); } ctx.stroke();
-      if (!d.pleine && !d.battant && nv > 1) { ctx.lineWidth = 2.4 / zz; ctx.beginPath(); ctx.moveTo(g + a.l * 0.08, -ep / 2); ctx.lineTo(g + a.l * 0.42, -ep / 2); ctx.moveTo(g + a.l * 0.36, -ep / 2 - 0.04); ctx.lineTo(g + a.l * 0.42, -ep / 2); ctx.lineTo(g + a.l * 0.36, -ep / 2 + 0.04); ctx.stroke(); }
-      if (d.battant || d.pleine) { ctx.lineWidth = 1 / zz; ctx.setLineDash([4 / zz, 3 / zz]); const w = d.pleine ? a.l : a.l / 2; ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, w); ctx.arc(g, 0, w, Math.PI / 2, 0, true); if (!d.pleine) { ctx.moveTo(-g, 0); ctx.lineTo(-g, w); ctx.arc(-g, 0, w, Math.PI / 2, Math.PI); } ctx.stroke(); }
+      const ep = EP_MUR, zz = cam.z;
+      ctx.fillStyle = "#B4694F"; ctx.fillRect(g - 0.12, 0, a.l + 0.24, ep + 0.01); ctx.fillStyle = d.pleine ? "#8C6A48" : "#CFE3EE"; ctx.fillRect(g, 0.03, a.l, ep - 0.05);
+      ctx.lineWidth = 1.4 / zz; ctx.strokeStyle = "#16201B"; ctx.strokeRect(g, 0.03, a.l, ep - 0.05);
+      const nv = d.vantaux || 1; ctx.beginPath(); for (let k = 1; k < nv; k++) { ctx.moveTo(g + a.l * k / nv, 0.03); ctx.lineTo(g + a.l * k / nv, ep - 0.02); } ctx.stroke();
+      if (!d.pleine && !d.battant && nv > 1) { ctx.lineWidth = 2.4 / zz; ctx.beginPath(); ctx.moveTo(g + a.l * 0.08, ep / 2); ctx.lineTo(g + a.l * 0.42, ep / 2); ctx.moveTo(g + a.l * 0.36, ep / 2 - 0.04); ctx.lineTo(g + a.l * 0.42, ep / 2); ctx.lineTo(g + a.l * 0.36, ep / 2 + 0.04); ctx.stroke(); }
+      if (d.battant || d.pleine) { ctx.lineWidth = 1 / zz; ctx.setLineDash([4 / zz, 3 / zz]); const w = d.pleine ? a.l : a.l / 2; ctx.beginPath(); ctx.moveTo(g, ep); ctx.lineTo(g, ep + w); ctx.arc(g, ep, w, Math.PI / 2, 0, true); if (!d.pleine) { ctx.moveTo(-g, ep); ctx.lineTo(-g, ep + w); ctx.arc(-g, ep, w, Math.PI / 2, Math.PI); } ctx.stroke(); }
       ctx.restore(); continue;
     }
     ctx.fillStyle = fond ? "#D9D4C9" : "#EFEDE7"; ctx.fillRect(g, -0.002, a.l, 0.17);
@@ -1155,7 +1279,7 @@ function dessiner() {
   } else dessinerLames(vue === "structure" ? 0.16 : 1, vue === "structure" ? "#F4F1EA" : null);
   if (ex && etat.cadre && vue === "plan") dessinerCadre();
   if (vue === "structure" && ex) dessinerStructure();
-  if (ex) { ctx.lineWidth = 2; ctx.strokeStyle = "#16201B"; tracerPoly(); ctx.stroke(); dessinerMarches(); }
+  if (ex) { ctx.lineWidth = 2; ctx.strokeStyle = "#16201B"; tracerPoly(); ctx.stroke(); dessinerMarches(); dessinerOuvertures(); }
   dessinerElements();
   if (ex && etat.spots && vue === "plan") for (const q of pointsSpots()) { const s = ecran(q); ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(3, 0.04 * cam.z), 0, 6.3); ctx.fillStyle = "#FFE9A8"; ctx.strokeStyle = "#16201B"; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); }
   dessinerCalque();
@@ -1163,8 +1287,8 @@ function dessiner() {
 const texteCalque = (x, y, t, attrs = "") => { const lp = t.length * 6.8 + 16; return `<g ${attrs}><rect class="c-pastille" x="${x - lp / 2}" y="${y - 12}" width="${lp}" height="24" rx="7"/><text class="c-texte" x="${x}" y="${y}">${t}</text></g>`; };
 function dessinerCalque() {
   if (vue === "3d") { calque.innerHTML = ""; return; }
-  const c = calepin, pts = etat.poly, nom = nomEtape(), edition = nom === "projet" || nom === "forme", marqueCote = nom !== "terrain" || !c.estExt;
-  calque.setAttribute("class", `${c.estExt && !fond ? "" : "sombre"} ${outil === "retirer" ? "retirer" : ""}`);
+  const c = calepin, pts = etat.poly, nom = nomEtape(), edition = nom === "projet" || nom === "forme", marqueCote = cotes && (nom !== "terrain" || !c.estExt), bordSel = nom === "elements" && etat.ouvertures[choixO] ? ancrage(etat.ouvertures[choixO]).i : -1;
+  calque.setAttribute("class", `${c.estExt && !fond ? "" : "sombre"} ${outil === "retirer" ? "retirer" : ""} ${["encoche", "pancoupe"].includes(outil) ? "cible" : ""}`);
   let h = "";
   const b = bords();
   const m0 = etat.marches.map(marcheInfo);
@@ -1174,6 +1298,7 @@ function dessinerCalque() {
     h += `<path class="autre-piece" data-room="${i}" d="${d}"/>` + texteCalque(s.x, s.y, esc(p.nom), `data-room="${i}" role="button" aria-label="Ouvrir ${esc(p.nom)}"`);
   });
   if (marqueCote) b.forEach(e => {
+    if (e.i === bordSel) return;
     const mil = { x: (e.A.x + e.B.x) / 2 + e.nx * 0.3, y: (e.A.y + e.B.y) / 2 + e.ny * 0.3 }, voisin = !c.estExt && etat.pieces.some((p, i) => i !== etat.active && dansPoly(mil, p.poly)), sg = voisin ? -1 : 1, nx = e.nx * sg, ny = e.ny * sg;
     const a = ecran(e.A), f = ecran(e.B), dx = e.ux, sousMarche = m0.find(m => m.i === e.i), d = voisin ? 34 : (Math.abs(dx) > 0.5 ? 28 : 44) + (c.estExt && sousMarche ? sousMarche.course * cam.z : c.estExt ? 0 : 0.16 * cam.z);
     const a2 = { x: a.x + nx * d, y: a.y + ny * d }, b2 = { x: f.x + nx * d, y: f.y + ny * d }, mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, texte = metres(e.len);
@@ -1184,28 +1309,45 @@ function dessinerCalque() {
     const a = ecran(e.A), f = ecran(e.B), cx = (a.x + f.x) / 2, cy = (a.y + f.y) / 2, deg = Math.atan2(e.uy, e.ux) * 180 / Math.PI;
     h += `<g data-e="${e.i}" transform="translate(${cx} ${cy}) rotate(${deg})"><rect class="tampon" x="-22" y="-22" width="44" height="44"/><rect class="prise" x="-12" y="-4" width="24" height="8" rx="4"/></g>`;
   });
-  if (["ajouter", "marche", "ouverture", "zone", "piece"].includes(outil)) b.forEach(e => {
+  if (["ajouter", "marche", "ouverture", "zone", "piece", "renfoncement", "saillie"].includes(outil)) b.forEach(e => {
     const a = ecran(e.A), f = ecran(e.B);
     h += `<line class="bord-trace" x1="${a.x}" y1="${a.y}" x2="${f.x}" y2="${f.y}"/><line class="bord-actif" data-b="${e.i}" x1="${a.x}" y1="${a.y}" x2="${f.x}" y2="${f.y}"/>`;
   });
-  if (edition) {
-    pts.forEach((p, i) => { const s = ecran(p); h += `<g data-s="${i}"><circle class="tampon" cx="${s.x}" cy="${s.y}" r="22"/><circle class="sommet" cx="${s.x}" cy="${s.y}" r="7"/></g>`; });
-    if (fond || etat.pieces.length > 1) { const bb = boiteEnglobante(pts), s = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }); h += `<g data-t="1"><circle class="c-pastille" cx="${s.x}" cy="${s.y}" r="18"/><path d="M${s.x - 9} ${s.y}h18M${s.x} ${s.y - 9}v18" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></g>`; }
-    if (c.estExt && nom === "forme") { const bb = boiteEnglobante(pts), ce = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }), ry = Math.min(ecran({ x: 0, y: bb.vmin }).y - 46, ce.y - 60); h += `<path class="rot-lien" d="M${ce.x} ${ce.y}L${ce.x} ${ry}"/><g data-rot="1" role="button" aria-label="Tourner la terrasse"><circle class="tampon" cx="${ce.x}" cy="${ry}" r="24"/><circle class="c-pastille" cx="${ce.x}" cy="${ry}" r="17"/><path d="M${ce.x - 7} ${ry + 2}a7 7 0 1 1 3 5.5M${ce.x - 7} ${ry - 4}v6h6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>`; }
-  }
+  if (edition) pts.forEach((p, i) => { const s = ecran(p); h += `<g data-s="${i}"><circle class="tampon" cx="${s.x}" cy="${s.y}" r="22"/><circle class="sommet" cx="${s.x}" cy="${s.y}" r="7"/></g>`; });
+  if ((edition && (fond || etat.pieces.length > 1)) || deplacer) { const bb = boiteEnglobante(pts), s = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }); h += `<g data-t="1" role="button" aria-label="Déplacer l’ensemble"><circle class="c-pastille" cx="${s.x}" cy="${s.y}" r="18"/><path d="M${s.x - 9} ${s.y}h18M${s.x} ${s.y - 9}v18" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></g>`; }
+  if (c.estExt && (nom === "forme" || tourner)) { const bb = boiteEnglobante(pts), ce = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }), ry = Math.min(ecran({ x: 0, y: bb.vmin }).y - 46, ce.y - 60); h += `<path class="rot-lien" d="M${ce.x} ${ce.y}L${ce.x} ${ry}"/><g data-rot="1" role="button" aria-label="Tourner la terrasse"><circle class="tampon" cx="${ce.x}" cy="${ry}" r="24"/><circle class="c-pastille" cx="${ce.x}" cy="${ry}" r="17"/><path d="M${ce.x - 7} ${ry + 2}a7 7 0 1 1 3 5.5M${ce.x - 7} ${ry - 4}v6h6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>`; }
   if (nom === "elements" && vue !== "3d") {
-    if (!c.estExt) etat.ouvertures.forEach((o, i) => { const a = ancrage(o), s = ecran({ x: a.cx, y: a.cy }); h += `<g data-p="${i}"><circle class="tampon" cx="${s.x}" cy="${s.y}" r="22"/><circle class="sommet" cx="${s.x}" cy="${s.y}" r="6"/></g>`; });
-    etat.elements.forEach((o, i) => {
-      const s = ecran(o), w = o.l * cam.z, hh = o.p * cam.z, wv = Math.max(w, 44), hv = Math.max(hh, 44);
-      h += `<g data-el="${i}" transform="translate(${s.x} ${s.y}) rotate(${o.rot})"><rect class="tampon" x="${-wv / 2}" y="${-hv / 2}" width="${wv}" height="${hv}"/>${i === choix ? `<rect class="sel" x="${-w / 2 - 4}" y="${-hh / 2 - 4}" width="${w + 8}" height="${hh + 8}" rx="4"/>` : ""}</g>`;
+    const z = cam.z, sn = aireSignee(pts) > 0 ? -1 : 1; // après rotation SVG, l'axe y local pointe vers -s·n : scale(1, sn) rend y positif = vers l'extérieur
+    etat.ouvertures.forEach((o, i) => {
+      const a = ancrage(o), d = OUVERTURES[o.type], s = ecran({ x: a.cx, y: a.cy }), deg = Math.atan2(a.uy, a.ux) * 180 / Math.PI, v0 = (d.ext ? -0.06 : -0.05) * z, v1 = (d.ext ? EP_MUR + 0.05 : 0.2) * z, w = Math.max(a.l * z, 30), hh = Math.max(v1 - v0, 30), sel = i === choixO;
+      h += `<g data-p="${i}" transform="translate(${s.x} ${s.y}) rotate(${deg}) scale(1 ${sn})" role="button" aria-label="${esc(d.nom)}">${sel ? `<rect class="sel-ouv" x="${-a.l * z / 2 - 3}" y="${v0 - 2}" width="${a.l * z + 6}" height="${v1 - v0 + 4}" rx="3"/>` : ""}<rect class="tampon" x="${-w / 2}" y="${v0 - (hh - (v1 - v0)) / 2}" width="${w}" height="${hh}"/></g>`;
     });
-    const o = etat.elements[choix];
-    if (o) { const s = ecran(o), y = clamp(s.y - Math.max(o.l, o.p) * cam.z / 2 - 26, 70, HP - 30), x = clamp(s.x, 40, LP - 40); h += `<g data-er="${choix}" role="button" aria-label="Tourner"><circle class="mini" cx="${x - 20}" cy="${y}" r="16"/><text class="mini-t" x="${x - 20}" y="${y}">↻</text></g><g data-ex="${choix}" role="button" aria-label="Retirer"><circle class="mini" cx="${x + 20}" cy="${y}" r="16"/><text class="mini-t" x="${x + 20}" y="${y}">×</text></g>`; }
+    const so = etat.ouvertures[choixO];
+    if (so && cotes) {
+      // Cotes de part et d'autre de l'ouverture sélectionnée, le long du mur : distance au début du bord, largeur, distance à la fin.
+      const a = ancrage(so), d = OUVERTURES[so.type], d0 = a.t * a.len - a.l / 2, d1 = d0 + a.l, off = (d.ext ? EP_MUR + 0.05 : 0.2) * z + 28, P = t => { const q = ecran({ x: a.A.x + a.ux * t, y: a.A.y + a.uy * t }); return { x: q.x + a.nx * off, y: q.y + a.ny * off }; }, tick = t => { const q = ecran({ x: a.A.x + a.ux * t, y: a.A.y + a.uy * t }), r = P(t); return `M${q.x + a.nx * 6} ${q.y + a.ny * 6}L${r.x + a.nx * 6} ${r.y + a.ny * 6}`; };
+      const A = P(0), B = P(a.len), m0 = P(d0 / 2), m1 = P((d0 + d1) / 2), m2 = P((d1 + a.len) / 2);
+      h += `<path class="c-sel" d="M${A.x} ${A.y}L${B.x} ${B.y}${tick(0)}${tick(d0)}${tick(d1)}${tick(a.len)}"/>`;
+      if (d0 > 0.02) h += texteCalque(m0.x, m0.y, metres(d0), `class="cote" data-co="0" role="button" tabindex="0" aria-label="Distance au début du mur ${metres(d0)}, modifier"`);
+      h += texteCalque(m1.x, m1.y, metres(a.l), `class="cote" data-co="1" role="button" tabindex="0" aria-label="Largeur ${metres(a.l)}, modifier"`).replace('class="c-pastille"', 'class="c-pastille sel-t"');
+      if (a.len - d1 > 0.02) h += texteCalque(m2.x, m2.y, metres(a.len - d1), `class="cote" data-co="2" role="button" tabindex="0" aria-label="Distance à la fin du mur ${metres(a.len - d1)}, modifier"`);
+    }
+    etat.elements.forEach((o, i) => {
+      const s = ecran(o), w = o.l * z, hh = o.p * z, wv = Math.max(w, 44), hv = Math.max(hh, 44), d = ELEMENTS[o.type];
+      h += `<g data-el="${i}" transform="translate(${s.x} ${s.y}) rotate(${o.rot})" role="button" aria-label="${esc(d.nom)}"><rect class="tampon" x="${-wv / 2}" y="${-hv / 2}" width="${wv}" height="${hv}"/>${i === choix ? (d.rond ? `<circle class="sel" cx="0" cy="0" r="${w / 2 + 3}"/>` : `<rect class="sel" x="${-w / 2 - 3}" y="${-hh / 2 - 3}" width="${w + 6}" height="${hh + 6}" rx="3"/>`) : ""}</g>`;
+    });
+    const se = etat.elements[choix];
+    if (se && cotes) {
+      const d = ELEMENTS[se.type], a = se.rot * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), s = ecran(se), hw = se.l * z / 2, hp = se.p * z / 2, pt = (u, v) => ({ x: s.x + u * co - v * si, y: s.y + u * si + v * co });
+      if (d.rond) { const q = pt(0, -hw - 18); h += texteCalque(q.x, q.y, `Ø ${metres(se.l)}`); }
+      else { const q1 = pt(0, -hp - 18), q2 = pt(hw + 18 + Math.min(20, metres(se.p).length * 3), 0); h += texteCalque(q1.x, q1.y, metres(se.l)) + texteCalque(q2.x, q2.y, metres(se.p)); }
+    }
   }
   if (nom === "terrain" && c.estExt) {
     pts.forEach((p, i) => { const s = ecran(p), e = b[i], e0 = b[(i - 1 + pts.length) % pts.length]; h += texteCalque(s.x + (e.nx + e0.nx) * 30, s.y + (e.ny + e0.ny) * 26, cm(c.hs[i])); });
     if (etat.pente > 0) { const bb = boiteEnglobante(pts), o = ecran({ x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }), t = terrain(), L = 46, x1 = o.x + t.d.x * L, y1 = o.y + t.d.y * L, x0 = o.x - t.d.x * L, y0 = o.y - t.d.y * L, a = Math.atan2(t.d.y, t.d.x); h += `<path class="fleche" d="M${x0} ${y0}L${x1} ${y1}M${x1 - 13 * Math.cos(a - 0.5)} ${y1 - 13 * Math.sin(a - 0.5)}L${x1} ${y1}L${x1 - 13 * Math.cos(a + 0.5)} ${y1 - 13 * Math.sin(a + 0.5)}"/>` + texteCalque(o.x, o.y - 26, `Pente ${fr(etat.pente, etat.pente % 1 ? 1 : 0)} %`); }
-    m0.forEach((m, i) => { const s = ecran({ x: m.cx + m.nx * m.course / 2, y: m.cy + m.ny * m.course / 2 }); h += texteCalque(s.x, s.y, `${m.nb} marche${m.nb > 1 ? "s" : ""}`, `data-m="${i}"`); });
+    const sn = aireSignee(pts) > 0 ? -1 : 1;
+    m0.forEach((m, i) => { const s = ecran({ x: m.cx + m.nx * m.course / 2, y: m.cy + m.ny * m.course / 2 }); if (i === choixM) { const q = ecran({ x: m.cx, y: m.cy }), deg = Math.atan2(m.uy, m.ux) * 180 / Math.PI; h += `<g transform="translate(${q.x} ${q.y}) rotate(${deg}) scale(1 ${sn})" pointer-events="none"><rect class="sel" x="${-m.l * cam.z / 2 - 3}" y="-3" width="${m.l * cam.z + 6}" height="${m.course * cam.z + 6}" rx="3"/></g>`; } h += texteCalque(s.x, s.y, `${m.nb} marche${m.nb > 1 ? "s" : ""}`, `data-m="${i}" role="button" aria-label="Accès ${i + 1}"`); });
   }
   if ((nom === "pose" || nom === "metre") && c.rangs.length) {
     const umid = (c.bb.umin + c.bb.umax) / 2, vmid = (c.bb.vmin + c.bb.vmax) / 2;
@@ -1216,6 +1358,45 @@ function dessinerCalque() {
   calibration.forEach(q => { const s = ecran(q); h += `<circle cx="${s.x}" cy="${s.y}" r="6" fill="#E0413A" stroke="#fff" stroke-width="2"/>`; });
   if (calibration.length === 2) { const a = ecran(calibration[0]), f = ecran(calibration[1]); h += `<line x1="${a.x}" y1="${a.y}" x2="${f.x}" y2="${f.y}" stroke="#E0413A" stroke-width="2" stroke-dasharray="6 5"/>`; }
   calque.innerHTML = h;
+  afficherBulle();
+}
+/* Bulle d'édition de la sélection, sur le modèle de calepinage.com : type, largeur, déplacer, tourner, supprimer. */
+let cleBulle = "";
+const ICO = {
+  moins: '<path d="M6 12h12"/>', plus: '<path d="M12 6v12M6 12h12"/>', tourner: '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/>', deplacer: '<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+  ajuster: '<path d="M5 3l14 9-6.5 1.5L16 20l-2.6 1.2-3.4-6.6L5.5 19z"/>', ajouter: '<path d="M4 20V9h11M15 5h6M18 2v6"/>', retirer: '<path d="M4 20V9h11M15 5h6"/>', encoche: '<path d="M4 20V4h9v7h7v9z"/>', renfoncement: '<path d="M4 20V4h5v6h6V4h5v16z"/>', saillie: '<path d="M4 20V9h5V4h6v5h5v11z"/>', pancoupe: '<path d="M4 20V4h10l6 6v10z"/>',
+  marche: '<path d="M3 20h5v-4h5v-4h5V8h3"/>', ouverture: '<path d="M4 20V4h16v16M4 12h16M12 4v16"/>', piece: '<path d="M3 3h18v18H3zM3 12h9M12 3v18"/>', zone: '<path d="M4 4h10v16H4zM14 9h6v6h-6"/>', pente: '<path d="M3 18 21 6M3 18h18M14 6h7v7"/>', fleche: '<path d="m10 6 6 6-6 6"/>'
+};
+const ico = (k, cls = "ico") => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
+const ICO_OUV = {
+  coulissante: '<path d="M2 6h11v12H2zM11 6h11v12H11zM5 12h4m-1.5-1.5L9 12l-1.5 1.5"/>', galandage: '<path d="M2 4v16M12 6h10v12H12zM4 12h6m-1.5-1.5L10 12l-1.5 1.5"/>', pfext: '<path d="M4 3h16v18H4zM12 3v18M9 11v2M15 11v2"/>', porteext: '<path d="M5 3h14v18H5zM14 11v2"/>', fenext: '<path d="M3 6h18v12H3zM12 6v12M3 12h18"/>',
+  porte: '<path d="M5 3h14v18H5zM14 11v2"/>', baie: '<path d="M4 3h16v18H4zM12 3v18M9 11v2M15 11v2"/>', fenetre: '<path d="M3 6h18v12H3zM12 6v12M3 12h18"/>', passage: '<path d="M4 3v18M20 3v18M9 12h6m-2-2 2 2-2 2"/>'
+};
+function afficherBulle() {
+  const b = $("bulle"), nom = nomEtape(), z = cam.z; let html = "", cle = "", centre = null, rayon = 0, dir = { x: 0, y: -1 };
+  const pm = (k, t, v, u = "largeur") => `<button class="ico" type="button" data-${k}="-1" data-tip="Moins ${t}" aria-label="Réduire">${ico("moins")}</button><span class="val">${fr(v, 2)} m<small>${u}</small></span><button class="ico" type="button" data-${k}="1" data-tip="Plus ${t}" aria-label="Augmenter">${ico("plus")}</button>`;
+  const fin = `<div class="sep"></div><button class="ico" type="button" data-bdep="1" data-tip="Glisser pour déplacer" aria-label="Déplacer">${ico("deplacer")}</button><button class="sup" type="button" data-bsup="1">Supprimer</button>`;
+  if (vue !== "3d" && nom === "elements" && etat.elements[choix]) {
+    const o = etat.elements[choix], d = ELEMENTS[o.type], esc_ = o.type === "escalier";
+    html = `<span class="nom">${esc(d.nom)}</span><div class="sep"></div>${pm("bl", d.rond ? "large" : "long", o.l, d.rond ? "diamètre" : "longueur")}${d.rond || esc_ ? "" : pm("bp", "large", o.p, "largeur")}${d.rond ? "" : `<div class="sep"></div><button class="ico" type="button" data-brot="1" data-tip="Tourner de 90°" aria-label="Tourner">${ico("tourner")}</button>`}${fin}`;
+    cle = `e${choix}:${o.type}:${o.l}:${o.p}`; centre = o; rayon = Math.max(o.l, o.p) * z / 2 + 6;
+  } else if (vue !== "3d" && nom === "elements" && etat.ouvertures[choixO]) {
+    const o = etat.ouvertures[choixO], a = ancrage(o), d = OUVERTURES[o.type];
+    html = `<span class="nom">${esc(d.nom)}</span><div class="sep"></div>` + ouverturesLieu().map(([k, v]) => `<button class="ico" type="button" data-bo="${k}" aria-pressed="${k === o.type}" data-tip="${esc(v.nom)}" aria-label="${esc(v.nom)}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_OUV[k] || ICO.ouverture}</svg></button>`).join("") + `<div class="sep"></div>${pm("bw", "large", a.l)}${fin}`;
+    cle = `o${choixO}:${o.type}:${a.l}:${ouverturesLieu().length}`; centre = { x: a.cx + a.nx * (d.ext ? EP_MUR / 2 : 0.08), y: a.cy + a.ny * (d.ext ? EP_MUR / 2 : 0.08) }; rayon = (d.ext ? EP_MUR : 0.2) * z / 2 + 8;
+    dir = { x: -a.nx, y: -a.ny }; // vers l'intérieur : les cotes restent visibles de l'autre côté du mur
+  } else if (vue !== "3d" && nom === "terrain" && etat.marches[choixM]) {
+    const o = etat.marches[choixM], m = marcheInfo(o);
+    html = `<span class="nom">Accès ${choixM + 1}<small style="display:block;font-weight:500;color:var(--doux);font-size:11px">${m.nb} marche${m.nb > 1 ? "s" : ""} de ${cm(m.r)}</small></span><div class="sep"></div>${pm("bw", "large", o.l)}${fin}`;
+    cle = `m${choixM}:${o.l}:${m.nb}`; centre = { x: m.cx + m.nx * m.course / 2, y: m.cy + m.ny * m.course / 2 }; rayon = Math.max(m.l, m.course) * z / 2 + 6;
+  }
+  if (!html) { b.hidden = true; cleBulle = ""; return; }
+  if (cle !== cleBulle) { b.innerHTML = html; cleBulle = cle; }
+  b.hidden = false;
+  const s = ecran(centre), w = b.offsetWidth, hb = b.offsetHeight;
+  if (dir.y < -0.5 && s.y - rayon - 12 - hb < 64) dir = { x: 0, y: 1 };
+  const x = s.x + dir.x * (rayon + 12 + w / 2), y = s.y + dir.y * (rayon + 12 + hb / 2);
+  b.style.left = `${clamp(x, w / 2 + 8, Math.max(w / 2 + 8, LP - w / 2 - 8))}px`; b.style.top = `${clamp(y, 64 + hb / 2, Math.max(64 + hb / 2, HP - hb / 2 - 8))}px`;
 }
 
 /* Édition */
@@ -1234,7 +1415,7 @@ function valide(pts) {
 }
 const clone = () => JSON.stringify(etat);
 function memoriser() { passe.push(clone()); if (passe.length > 60) passe.shift(); futur.length = 0; boutonsHistorique(); }
-function restaurer(j) { Object.assign(etat, JSON.parse(j)); memo.clear(); choix = -1; synchroniser(); }
+function restaurer(j) { Object.assign(etat, JSON.parse(j)); memo.clear(); choisir("", -1); synchroniser(); }
 function boutonsHistorique() { $("annuler").disabled = !passe.length; $("refaire").disabled = !futur.length; }
 const arrondi = v => Math.round(v / PAS) * PAS;
 function bougerSommet(base, i, x, y) {
@@ -1276,20 +1457,65 @@ function retirerPoint(i) {
   if (!valide(pts)) { toast("Ce point ne peut pas être retiré."); return; }
   memoriser(); etat.poly = pts; etat.forme = null; synchroniser();
 }
+const AIDE_OUTIL = { ajuster: "Glissez un point, ou un bord pour le décaler. Touchez une cote pour saisir une longueur.", ajouter: "Touchez un bord pour y placer un point. Avec deux points sur un bord, glissez le segment entre eux pour créer un décroché.", retirer: "Touchez un point rouge pour le retirer.", encoche: "Touchez un angle pour y découper une encoche carrée.", pancoupe: "Touchez un angle pour le couper en biais.", renfoncement: "Touchez un bord pour y creuser un renfoncement.", saillie: "Touchez un bord pour y ajouter une avancée.", marche: "Touchez le bord où placer la marche." };
 function choisirOutil(o, type = "") {
   outil = o; typeOutil = type; appuyer("#outils-forme", "data-v", ["ajuster", "ajouter", "retirer"].includes(o) ? o : "ajuster");
   $("ajout-marche").setAttribute("aria-pressed", String(o === "marche"));
   document.querySelectorAll("#ajout-ouvertures [data-o], #ajout-zones [data-z], #ajout-pieces [data-n]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.o || b.dataset.z || b.dataset.n) === type && !!type)));
-  const textes = { ajuster: "Glissez un point, ou un bord pour le décaler. Touchez une cote pour saisir une longueur.", ajouter: "Touchez un bord pour y placer un point. Avec deux points sur un bord, glissez le segment entre eux pour créer un décroché.", retirer: "Touchez un point rouge pour le retirer." };
-  $("aide-outil").textContent = textes[o] || textes.ajuster;
-  $("aide-elements").textContent = o === "ouverture" ? (ext() ? "Touchez le bord de la terrasse qui longe la maison." : "Touchez un mur pour placer l’ouverture.") : o === "zone" ? "Touchez un mur pour y raccorder cette surface. Ajustez ensuite ses cotes à l’étape Forme." : o === "piece" ? "Touchez le mur où ouvrir la nouvelle pièce." : ext() ? "Glissez un élément sur le plan. La terrasse, sa structure et le métré se recalculent." : "Glissez un élément sur le plan : il s’aimante aux murs. Les coupes et le métré se recalculent.";
+  document.querySelectorAll("#outils-etape [data-outil]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.outil === o)));
+  $("aide-outil").textContent = AIDE_OUTIL[o] || AIDE_OUTIL.ajuster;
+  $("aide-elements").textContent = o === "ouverture" ? (ext() ? "Touchez le bord de la terrasse qui longe la maison : le mur se dessine de l’autre côté." : "Touchez un mur pour placer l’ouverture.") : o === "zone" ? "Touchez un mur pour y raccorder cette surface. Ajustez ensuite ses cotes à l’étape Forme." : o === "piece" ? "Touchez le mur où ouvrir la nouvelle pièce." : ext() ? "Touchez un élément pour le sélectionner, puis réglez-le dans la bulle. Les éléments ne se chevauchent pas." : "Touchez un élément pour le sélectionner : il s’aimante aux murs. Les coupes et le métré se recalculent.";
   planifier();
 }
+/* Barre d'outils de l'étape, au-dessus du plan, avec infobulles : les actions sur le plan sont là, les réglages détaillés restent dans le panneau. */
+function afficherOutils() {
+  const nom = nomEtape(), ex = ext(), b = (k, t, extra = "") => `<button class="ico" type="button" data-outil="${k}" data-tip="${esc(t)}" aria-label="${esc(t)}" aria-pressed="${outil === k}" ${extra}>${ico(k)}</button>`, menu = (k, t, cle) => `<button class="ico" type="button" data-menu="${cle}" data-outil="${k}" data-tip="${esc(t)}" aria-label="${esc(t)}" aria-pressed="${outil === k}">${ico(k)}</button>`;
+  let h = "";
+  if (nom === "forme") h = b("ajuster", "Ajuster les points") + b("ajouter", "Ajouter un coin") + b("retirer", "Retirer un coin") + `<div class="sep"></div>` + b("encoche", "Encoche dans un angle") + b("renfoncement", "Renfoncement") + b("saillie", "Saillie") + b("pancoupe", "Pan coupé");
+  else if (nom === "elements") h = menu("ouverture", ex ? "Ouverture de la maison" : "Ouverture", "ouvertures") + (ex ? "" : menu("piece", "Ajouter une pièce", "pieces") + menu("zone", "Prolonger le sol", "zones"));
+  else if (nom === "terrain" && ex) h = b("marche", "Ajouter une marche") + (fond && fond.aerien ? `<button class="ico" type="button" data-action="pente" data-tip="Lire la pente sur la carte IGN" aria-label="Lire la pente">${ico("pente")}</button>` : "");
+  $("outils-etape").innerHTML = h;
+  $("lat-tourner").hidden = !ex; $("lat-tourner").setAttribute("aria-pressed", String(tourner)); $("lat-deplacer").setAttribute("aria-pressed", String(deplacer)); $("lat-cotes").setAttribute("aria-pressed", String(cotes));
+  $("lateral").hidden = vue === "3d" || nom === "metre"; $("importer").hidden = vue === "3d"; $("outils-etape").hidden = vue === "3d";
+}
+let menuOuvert = null;
+function fermerMenu() { if (!menuOuvert) return; $("menu").hidden = true; menuOuvert = null; }
+function ouvrirMenu(bouton, cle) {
+  if (menuOuvert === cle) { fermerMenu(); return; }
+  const items = cle === "ouvertures" ? ouverturesLieu().map(([k, v]) => [k, v.nom, `${fr(v.l, 2)} m de large`]) : cle === "pieces" ? Object.entries(PIECES).map(([k, v]) => [k, v.nom, `${fr(v.w, 1)} × ${fr(v.d, 1)} m, avec une porte`]) : Object.entries(ZONES).map(([k, v]) => [k, v.nom, `${fr(v.w, 1)} × ${fr(v.d, 1)} m, même revêtement`]);
+  const m = $("menu"); m.innerHTML = items.map(([k, t, s]) => `<button type="button" data-k="${k}" aria-pressed="${typeOutil === k}"><span>${esc(t)}<small>${esc(s)}</small></span></button>`).join("");
+  const r = bouton.getBoundingClientRect(), s = scene.getBoundingClientRect(); m.style.left = `${Math.max(8, r.left - s.left)}px`; m.style.top = `${r.bottom - s.top + 6}px`; m.hidden = false; menuOuvert = cle;
+}
+$("outils-etape").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.menu) { ouvrirMenu(b, b.dataset.menu); return; }
+  fermerMenu();
+  if (b.dataset.action === "pente") { $("lire-pente").click(); return; }
+  const o = b.dataset.outil; choisirOutil(outil === o && o !== "ajuster" ? "ajuster" : o);
+  if (o !== "ajuster" && outil === o) toast(AIDE_OUTIL[o] || "");
+});
+$("menu").addEventListener("click", e => {
+  const b = e.target.closest("[data-k]"); if (!b) return; const k = b.dataset.k, cle = menuOuvert; fermerMenu();
+  const o = cle === "ouvertures" ? "ouverture" : cle === "pieces" ? "piece" : "zone";
+  choisirOutil(o, k); toast($("aide-elements").textContent);
+});
+$("lat-deplacer").addEventListener("click", () => { deplacer = !deplacer; afficherOutils(); planifier(); if (deplacer) toast("Glissez la croix au centre pour déplacer l’ensemble."); });
+$("lat-tourner").addEventListener("click", () => { tourner = !tourner; afficherOutils(); planifier(); if (tourner) toast("Glissez la poignée ronde pour tourner la terrasse."); });
+$("lat-cotes").addEventListener("click", () => { cotes = !cotes; afficherOutils(); planifier(); });
+$("lat-aide").addEventListener("click", () => { const nom = nomEtape(), s = document.querySelector(`[data-etape="${nom}"]`), t = nom === "forme" ? $("aide-outil").textContent : nom === "elements" ? $("aide-elements").textContent : (s && s.querySelector(".chapo") ? s.querySelector(".chapo").textContent : ""); toast(t || "Suivez les étapes de gauche à droite."); });
+$("z-main").addEventListener("click", () => { choisirOutil("ajuster"); fermerMenu(); });
+$("importer").addEventListener("click", () => { if (nomEtape() !== "projet") allerEtape(0); choixFond("plan"); $("fichier").click(); });
+$("suivant-plan").addEventListener("click", () => allerEtape(etape + 1));
+let reinitAttente = 0;
+$("reinit").addEventListener("click", () => {
+  if (Date.now() - reinitAttente > 4000) { reinitAttente = Date.now(); toast("Touchez encore pour tout recommencer."); return; }
+  reinitAttente = 0; const l = etat.lieu; etat.lieu = ""; changerLieu(l); allerEtape(0); toast("Projet remis à zéro. Annuler le rétablit.");
+});
 function choisirPiece(i) {
   if (i === etat.active || !etat.pieces[i]) return;
   etat.pieces[etat.active] = copie(extraire(etat));
   etat.active = i; Object.assign(etat, copie(etat.pieces[i]));
-  choix = -1; famille = "tout"; synchroniser();
+  choisir("", -1); famille = "tout"; synchroniser();
 }
 function ajouterPiece(i, m) {
   const z = PIECES[typeOutil], b = bords()[i], w = Math.min(z.w, Math.max(b.len, 1)), e = 0.16, t = clamp((m.x - b.A.x) * b.ux + (m.y - b.A.y) * b.uy, 0, b.len);
@@ -1302,29 +1528,41 @@ function ajouterPiece(i, m) {
   const id = 1 + Math.max(...etat.pieces.map(p => p.id)), n = etat.pieces.filter(p => p.nom.startsWith(z.nom)).length;
   etat.pieces.push({ ...copie(extraire(etat)), id, nom: z.nom === "Pièce" ? `Pièce ${etat.pieces.length + 1}` : n ? `${z.nom} ${n + 1}` : z.nom, poly: pts, forme: null, ouvertures: [], elements: [], humide: !!z.humide });
   const nv = etat.pieces.length - 1; etat.active = nv; Object.assign(etat, copie(etat.pieces[nv]));
-  choix = -1; famille = "tout"; choisirOutil("ajuster"); synchroniser(); cadrer();
+  choisir("", -1); famille = "tout"; choisirOutil("ajuster"); synchroniser(); cadrer();
   toast(`${etat.nom} ajoutée avec une porte.`);
 }
-function ajouterZone(i, m) {
-  const z = ZONES[typeOutil], b = bords()[i], w = Math.min(z.w, b.len);
+function ajouterZone(i, m) { const z = ZONES[typeOutil]; decrocher(i, m, z.w, z.d, z.nom); }
+/* Décroché sur un bord : saillie vers l'extérieur (d > 0) ou renfoncement vers l'intérieur (d < 0), centré sur le point touché. */
+function decrocher(i, m, wv, d, nom) {
+  const b = bords()[i], w = Math.min(wv, b.len);
   let d1 = arrondi(clamp((m.x - b.A.x) * b.ux + (m.y - b.A.y) * b.uy - w / 2, 0, b.len - w));
   if (d1 < 0.15) d1 = 0; if (b.len - d1 - w < 0.15) d1 = b.len - w;
   const S = { x: b.A.x + b.ux * d1, y: b.A.y + b.uy * d1 }, E = { x: S.x + b.ux * w, y: S.y + b.uy * w }, ajout = [];
   if (d1 > 0.01) ajout.push(S);
-  ajout.push({ x: S.x + b.nx * z.d, y: S.y + b.ny * z.d }, { x: E.x + b.nx * z.d, y: E.y + b.ny * z.d });
+  ajout.push({ x: S.x + b.nx * d, y: S.y + b.ny * d }, { x: E.x + b.nx * d, y: E.y + b.ny * d });
   if (b.len - d1 - w > 0.01) ajout.push(E);
   const pts = [...etat.poly]; pts.splice(i + 1, 0, ...ajout);
   if (!valide(pts)) { toast("Pas assez de place à cet endroit."); return; }
   memoriser(); etat.poly = pts; etat.forme = null; choisirOutil("ajuster"); synchroniser(); cadrer();
-  toast(`${z.nom} ajouté : ${fr(w, 2)} × ${fr(z.d, 2)} m.`);
+  toast(`${nom} ajouté${nom.endsWith("e") ? "e" : ""} : ${fr(w, 2)} × ${fr(Math.abs(d), 2)} m. Glissez les points pour ajuster.`);
+}
+/* Encoche carrée ou pan coupé sur un angle. */
+function encocher(i, chanfrein) {
+  const pts = etat.poly, n = pts.length, P = pts[(i - 1 + n) % n], Q = pts[i], R = pts[(i + 1) % n], l0 = Math.hypot(Q.x - P.x, Q.y - P.y), l1 = Math.hypot(R.x - Q.x, R.y - Q.y), w = Math.min(0.6, l0 / 2 - 0.05, l1 / 2 - 0.05);
+  if (w < 0.2) { toast("Les côtés sont trop courts pour cette découpe."); return; }
+  const u0 = { x: (Q.x - P.x) / l0, y: (Q.y - P.y) / l0 }, u1 = { x: (R.x - Q.x) / l1, y: (R.y - Q.y) / l1 }, a = { x: Q.x - u0.x * w, y: Q.y - u0.y * w }, c = { x: Q.x + u1.x * w, y: Q.y + u1.y * w };
+  const np = [...pts]; np.splice(i, 1, ...(chanfrein ? [a, c] : [a, { x: a.x + u1.x * w, y: a.y + u1.y * w }, c]));
+  if (!valide(np)) { toast("Cette découpe n’est pas possible ici."); return; }
+  memoriser(); etat.poly = np; etat.forme = null; choisirOutil("ajuster"); synchroniser();
+  toast(chanfrein ? "Angle coupé. Glissez les points pour ajuster." : "Encoche ajoutée. Glissez les points pour ajuster.");
 }
 const pointeurs = new Map(); let geste = null;
 const pos = e => { const r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 scene.addEventListener("pointerdown", e => {
-  if (vue === "3d" || e.target.closest(".vues, .ar, .outils, .bandeau, .legende, #cote-edit")) return;
-  fermerEdition(true);
+  if (vue === "3d" || e.target.closest(".barre-plan, .ar, .outils, .lateral, .importer, .bandeau, .legende, #cote-edit, #bulle, #menu")) return;
+  fermerEdition(true); fermerMenu();
   const q = pos(e); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
-  const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
+  const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-co],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
   if (mode === "calibrage" && pointeurs.size === 1) { if (calibration.length < 2) { calibration.push(monde(q.x, q.y)); if (calibration.length === 2) demanderDistance(); planifier(); } return; }
   if (pointeurs.size === 2) { const [a, b] = [...pointeurs.values()]; geste = { type: "pince", d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, ox: cam.ox, oy: cam.oy, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
   const m = monde(q.x, q.y);
@@ -1332,33 +1570,68 @@ scene.addEventListener("pointerdown", e => {
     const i = +d.b;
     if (outil === "ajouter") insererPoint(i, m);
     else if (outil === "marche") { memoriser(); const b = bords()[i], l = Math.min(1.2, b.len); etat.marches.push({ x: m.x, y: m.y, l }); choisirOutil("ajuster"); synchroniser(); cadrer(); }
-    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); choisirOutil("ajuster"); synchroniser(); if (ext()) toast("Ouverture posée. Glissez-la le long du bord."); }
+    else if (outil === "ouverture") { memoriser(); etat.ouvertures.push({ type: typeOutil, x: m.x, y: m.y, l: OUVERTURES[typeOutil].l }); choisir("ouvertures", etat.ouvertures.length - 1); choisirOutil("ajuster"); synchroniser(); toast(ext() ? "Ouverture posée sur le mur de la maison. Glissez-la le long du bord." : "Ouverture posée. Glissez-la le long du mur."); }
     else if (outil === "zone") ajouterZone(i, m);
     else if (outil === "piece") ajouterPiece(i, m);
+    else if (outil === "renfoncement") decrocher(i, m, 1.2, -0.6, "Renfoncement");
+    else if (outil === "saillie") decrocher(i, m, 1.2, 0.6, "Saillie");
     geste = { type: "rien" }; return;
   }
-  if (d.er !== undefined) { memoriser(); const o = etat.elements[+d.er]; o.rot = (o.rot + 90) % 360; synchroniser(); geste = { type: "rien" }; return; }
-  if (d.ex !== undefined) { memoriser(); etat.elements.splice(+d.ex, 1); choix = -1; synchroniser(); geste = { type: "rien" }; return; }
-  if (d.el !== undefined) { choix = +d.el; const o = etat.elements[choix]; geste = { type: "element", i: choix, dx: o.x - m.x, dy: o.y - m.y, ok: false }; afficherListes(); planifier(); return; }
+  if (d.er !== undefined) { tournerElement(+d.er); geste = { type: "rien" }; return; }
+  if (d.ex !== undefined) { memoriser(); etat.elements.splice(+d.ex, 1); choisir("", -1); synchroniser(); geste = { type: "rien" }; return; }
+  if (d.el !== undefined) { choisir("elements", +d.el); const o = etat.elements[choix]; geste = { type: "element", i: choix, dx: o.x - m.x, dy: o.y - m.y, lx: o.x, ly: o.y, ok: false }; afficherListes(); planifier(); return; }
   if (d.room !== undefined) { geste = { type: "room", i: +d.room, x: q.x, y: q.y, ox: cam.ox, oy: cam.oy }; return; }
   if (d.c !== undefined) { geste = { type: "cote", i: +d.c, x: q.x, y: q.y }; return; }
-  if (d.s !== undefined) { if (outil === "retirer") { retirerPoint(+d.s); geste = { type: "rien" }; return; } geste = { type: "sommet", i: +d.s, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
+  if (d.co !== undefined) { geste = { type: "cote-ouv", k: +d.co, x: q.x, y: q.y }; return; }
+  if (d.s !== undefined) { if (outil === "retirer") { retirerPoint(+d.s); geste = { type: "rien" }; return; } if (outil === "encoche" || outil === "pancoupe") { encocher(+d.s, outil === "pancoupe"); geste = { type: "rien" }; return; } geste = { type: "sommet", i: +d.s, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
   if (d.e !== undefined) { geste = { type: "bord", i: +d.e, base: etat.poly.map(p => ({ ...p })), ok: false }; return; }
   if (d.rot !== undefined) { const bb = boiteEnglobante(etat.poly), ce = { x: (bb.umin + bb.umax) / 2, y: (bb.vmin + bb.vmax) / 2 }; geste = { type: "rotation", ce, a0: Math.atan2(m.y - ce.y, m.x - ce.x), base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), rot0: etat.rotation || 0, ok: false }; return; }
   if (d.t !== undefined) { geste = { type: "bloc", base: etat.poly.map(p => ({ ...p })), mar: etat.marches.map(o => ({ ...o })), ouv: etat.ouvertures.map(o => ({ ...o })), ele: etat.elements.map(o => ({ ...o })), m, ok: false }; return; }
-  if (d.m !== undefined) { geste = { type: "ancre", liste: "marches", i: +d.m, ok: false }; return; }
-  if (d.p !== undefined) { geste = { type: "ancre", liste: "ouvertures", i: +d.p, ok: false }; return; }
-  if (choix >= 0) { choix = -1; afficherListes(); planifier(); }
+  if (d.m !== undefined) { const o = etat.marches[+d.m]; choisir("marches", +d.m); geste = { type: "ancre", liste: "marches", i: +d.m, dx: o.x - m.x, dy: o.y - m.y, ok: false }; afficherListes(); planifier(); return; }
+  if (d.p !== undefined) { const o = etat.ouvertures[+d.p]; choisir("ouvertures", +d.p); geste = { type: "ancre", liste: "ouvertures", i: +d.p, dx: o.x - m.x, dy: o.y - m.y, ok: false }; afficherListes(); planifier(); return; }
+  if (choix >= 0 || choixO >= 0 || choixM >= 0) { choisir("", -1); afficherListes(); planifier(); }
   geste = { type: "pan", x: q.x, y: q.y, ox: cam.ox, oy: cam.oy };
 });
+/* Poignée « déplacer » de la bulle : le geste continue sur le plan comme si l'on avait saisi l'objet lui-même. */
+$("bulle").addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-bdep]"); if (!b) return;
+  e.preventDefault(); const q = pos(e), m = monde(q.x, q.y); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
+  if (etat.elements[choix]) { const o = etat.elements[choix]; geste = { type: "element", i: choix, dx: o.x - m.x, dy: o.y - m.y, lx: o.x, ly: o.y, ok: false }; }
+  else if (etat.ouvertures[choixO]) { const o = etat.ouvertures[choixO]; geste = { type: "ancre", liste: "ouvertures", i: choixO, dx: o.x - m.x, dy: o.y - m.y, ok: false }; }
+  else if (etat.marches[choixM]) { const o = etat.marches[choixM]; geste = { type: "ancre", liste: "marches", i: choixM, dx: o.x - m.x, dy: o.y - m.y, ok: false }; }
+});
+$("bulle").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return; const d = b.dataset;
+  const el = etat.elements[choix], ouv = etat.ouvertures[choixO], mar = etat.marches[choixM];
+  if (d.bsup) { memoriser(); if (el) etat.elements.splice(choix, 1); else if (ouv) etat.ouvertures.splice(choixO, 1); else if (mar) etat.marches.splice(choixM, 1); choisir("", -1); synchroniser(); return; }
+  if (d.brot && el) { tournerElement(choix); return; }
+  if ((d.bl || d.bp) && el) { const k = d.bl ? "l" : "p", v = Math.round((el[k] + (+(d.bl || d.bp)) * 0.1) * 100) / 100; retailler(choix, k, v); return; }
+  if (d.bw && (ouv || mar)) { memoriser(); const o = ouv || mar, [mini, maxi] = ouv ? [0.4, 8] : [0.6, 6]; o.l = clamp(Math.round((o.l + (+d.bw) * 0.1) * 100) / 100, mini, maxi); synchroniser(); return; }
+  if (d.bo && ouv) { memoriser(); ouv.type = d.bo; synchroniser(); }
+});
+function tournerElement(i) {
+  const o = etat.elements[i]; if (!o) return; memoriser(); const r0 = o.rot, x0 = o.x, y0 = o.y; o.rot = (o.rot + 90) % 360;
+  if (!ecarter(o, i)) { o.rot = r0; o.x = x0; o.y = y0; passe.pop(); boutonsHistorique(); toast("Pas la place pour le tourner ici : éloignez-le d’abord."); planifier(); return; }
+  synchroniser();
+}
+function retailler(i, k, v) {
+  const o = etat.elements[i], d = ELEMENTS[o.type], lim = { l: [0.05, 30], p: [0.05, 30], ht: [0.2, 6], hb: [0.2, 2.5], rot: [-360, 360] }[k];
+  if (!Number.isFinite(v) || v < lim[0] || v > lim[1]) { toast(`Valeur attendue entre ${fr(lim[0], 2)} et ${fr(lim[1], 0)}.`); afficherListes(); return false; }
+  memoriser(); const avant = { ...o };
+  o[k] = k === "rot" ? mod(Math.round(v), 360) : Math.round(v * 100) / 100;
+  if (d.rond) o.p = o.l;
+  if (o.type === "escalier") o.p = infoEscalier(o).course;
+  if (!ecarter(o, i)) { Object.assign(o, avant); passe.pop(); boutonsHistorique(); toast("Pas la place : un autre élément est trop près."); afficherListes(); planifier(); return false; }
+  synchroniser(); return true;
+}
 scene.addEventListener("pointermove", e => {
   if (!pointeurs.has(e.pointerId) || !geste) return;
   const q = pos(e); pointeurs.set(e.pointerId, q);
   if (geste.type === "pince" && pointeurs.size === 2) { const [a, b] = [...pointeurs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), z = clamp(geste.z * d / geste.d, 6, 400); cam.z = z; cam.ox = (a.x + b.x) / 2 - (geste.cx - geste.ox) * z / geste.z; cam.oy = (a.y + b.y) / 2 - (geste.cy - geste.oy) * z / geste.z; planifier(); return; }
   if (geste.type === "pan" || geste.type === "room") { cam.ox = geste.ox + q.x - geste.x; cam.oy = geste.oy + q.y - geste.y; planifier(); return; }
   const m = monde(q.x, q.y);
-  if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { o.x = m.x; o.y = m.y; maj(); } return; }
-  if (geste.type === "element") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (o) { o.x = arrondi(m.x + geste.dx); o.y = arrondi(m.y + geste.dy); aimanter(o); maj(); } return; }
+  if (geste.type === "ancre") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat[geste.liste][geste.i]; if (o) { o.x = m.x + (geste.dx || 0); o.y = m.y + (geste.dy || 0); maj(); } return; }
+  if (geste.type === "element") { if (!geste.ok) { memoriser(); geste.ok = true; } const o = etat.elements[geste.i]; if (o) { o.x = arrondi(m.x + geste.dx); o.y = arrondi(m.y + geste.dy); aimanter(o); if (ecarter(o, geste.i)) { geste.lx = o.x; geste.ly = o.y; } else { o.x = geste.lx; o.y = geste.ly; } maj(); } return; }
   if (geste.type === "rotation") { if (!geste.ok) { memoriser(); geste.ok = true; } let da = (Math.atan2(m.y - geste.ce.y, m.x - geste.ce.x) - geste.a0) * 180 / Math.PI; if (!e.shiftKey) da = Math.round(da / 5) * 5; tournerTerrasse(geste, da); return; }
   if (geste.type === "bloc") { if (!geste.ok) { memoriser(); geste.ok = true; } const dx = arrondi(m.x - geste.m.x), dy = arrondi(m.y - geste.m.y), dep = l => l.map(o => ({ ...o, x: o.x + dx, y: o.y + dy })), np = geste.base.map(p => ({ x: p.x + dx, y: p.y + dy })); if (!valide(np)) return; etat.poly = np; etat.marches = dep(geste.mar); etat.ouvertures = dep(geste.ouv); etat.elements = dep(geste.ele); maj(); return; }
   if (geste.type === "sommet" || geste.type === "bord") {
@@ -1371,7 +1644,7 @@ scene.addEventListener("pointermove", e => {
     if (valide(pts)) { if (!geste.ok) { passe.push(JSON.stringify({ ...JSON.parse(clone()), poly: geste.base })); futur.length = 0; geste.ok = true; boutonsHistorique(); } etat.poly = pts; etat.forme = null; appuyer("#formes", "data-forme", ""); maj(); }
   }
 });
-function finGeste(e) { pointeurs.delete(e.pointerId); if (geste && geste.type === "room") { const q = pos(e), i = geste.i, bouge = Math.hypot(q.x - geste.x, q.y - geste.y) >= 8; geste = null; if (!bouge) choisirPiece(i); return; } if (geste && geste.type === "cote") { const q = pos(e); if (Math.hypot(q.x - geste.x, q.y - geste.y) < 8) ouvrirEdition(geste.i); } if (!pointeurs.size) geste = null; }
+function finGeste(e) { pointeurs.delete(e.pointerId); if (geste && geste.type === "room") { const q = pos(e), i = geste.i, bouge = Math.hypot(q.x - geste.x, q.y - geste.y) >= 8; geste = null; if (!bouge) choisirPiece(i); return; } if (geste && (geste.type === "cote" || geste.type === "cote-ouv")) { const q = pos(e); if (Math.hypot(q.x - geste.x, q.y - geste.y) < 8) { if (geste.type === "cote") ouvrirEdition(geste.i); else ouvrirEditionOuv(geste.k); } } if (!pointeurs.size) geste = null; }
 scene.addEventListener("pointerup", finGeste); scene.addEventListener("pointercancel", finGeste);
 scene.addEventListener("wheel", e => { if (vue === "3d") return; e.preventDefault(); zoomer(Math.exp(-e.deltaY * 0.0016), pos(e)); }, { passive: false });
 function zoomer(f, c = { x: LP / 2, y: HP / 2 }) { const z = clamp(cam.z * f, 6, 400); cam.ox = c.x - (c.x - cam.ox) * z / cam.z; cam.oy = c.y - (c.y - cam.oy) * z / cam.z; cam.z = z; planifier(); }
@@ -1382,7 +1655,20 @@ function ouvrirEdition(i) {
   ed.style.left = `${(a.x + f.x) / 2 + b.nx * dc}px`; ed.style.top = `${(a.y + f.y) / 2 + b.ny * dc}px`;
   ed.value = fr(b.len, 2); ed.hidden = false; edition = i; ed.focus(); ed.select();
 }
-function fermerEdition(valider) { const ed = $("cote-edit"); if (edition === null) return; const i = edition; edition = null; ed.hidden = true; if (valider) { const v = parseFloat(ed.value.replace(",", ".")); if (Number.isFinite(v) && v > 0) fixerLongueur(i, Math.round(v * 100) / 100); } }
+function ouvrirEditionOuv(k) {
+  const o = etat.ouvertures[choixO]; if (!o) return;
+  const a = ancrage(o), d = OUVERTURES[o.type], d0 = a.t * a.len - a.l / 2, d1 = d0 + a.l, off = (d.ext ? EP_MUR + 0.05 : 0.2) * cam.z + 28, t = k === 0 ? d0 / 2 : k === 1 ? (d0 + d1) / 2 : (d1 + a.len) / 2, q = ecran({ x: a.A.x + a.ux * t, y: a.A.y + a.uy * t }), ed = $("cote-edit");
+  ed.style.left = `${q.x + a.nx * off}px`; ed.style.top = `${q.y + a.ny * off}px`;
+  ed.value = fr(k === 0 ? d0 : k === 1 ? a.l : a.len - d1, 2); ed.hidden = false; edition = { ouv: choixO, k }; ed.focus(); ed.select();
+}
+function fixerCoteOuv(e, v) {
+  const o = etat.ouvertures[e.ouv]; if (!o) return; const a = ancrage(o);
+  memoriser();
+  if (e.k === 1) o.l = clamp(v, 0.4, Math.min(8, a.len));
+  else { const l = a.l, d0 = e.k === 0 ? clamp(v, 0, a.len - l) : clamp(a.len - v - l, 0, a.len - l), c = d0 + l / 2; o.x = a.A.x + a.ux * c; o.y = a.A.y + a.uy * c; }
+  synchroniser();
+}
+function fermerEdition(valider) { const ed = $("cote-edit"); if (edition === null) return; const i = edition; edition = null; ed.hidden = true; if (valider) { const v = parseFloat(ed.value.replace(",", ".")); if (Number.isFinite(v) && v >= 0) { if (typeof i === "object") fixerCoteOuv(i, Math.round(v * 100) / 100); else if (v > 0) fixerLongueur(i, Math.round(v * 100) / 100); } } }
 $("cote-edit").addEventListener("keydown", e => { if (e.key === "Enter") fermerEdition(true); if (e.key === "Escape") fermerEdition(false); });
 $("cote-edit").addEventListener("blur", () => fermerEdition(true));
 
@@ -1560,9 +1846,9 @@ function afficherTerrain() {
   $("infos-terrain").innerHTML = `<div><small>Point haut</small><b>${cm(c.hMin)}</b></div><div><small>Point bas</small><b>${cm(c.hMax)}</b></div>`;
 }
 function afficherListes() {
-  const ligne = (t, x, o, l, i) => `<div class="item"><span>${t}<small>${x}</small></span><button type="button" data-moins="${i}" aria-label="Réduire la largeur">−</button><output>${fr(o.l, 2)} m</output><button type="button" data-plus="${i}" aria-label="Augmenter la largeur">+</button><button type="button" data-sup="${i}" aria-label="Retirer">×</button></div>`;
-  $("liste-marches").innerHTML = etat.marches.map((o, i) => { const m = marcheInfo(o); return ligne(`Accès ${i + 1}`, `${m.nb} marche${m.nb > 1 ? "s" : ""} de ${cm(m.r)}`, o, m.l, i); }).join("");
-  $("liste-ouvertures").innerHTML = etat.ouvertures.map((o, i) => ligne(OUVERTURES[o.type].nom, "Glissez-la le long du mur", o, o.l, i)).join("");
+  const ligne = (t, x, o, l, i, sel) => `<div class="item" data-sel="${i}" aria-current="${sel}"><span>${t}<small>${x}</small></span><button type="button" data-moins="${i}" aria-label="Réduire la largeur">−</button><output>${fr(o.l, 2)} m</output><button type="button" data-plus="${i}" aria-label="Augmenter la largeur">+</button><button type="button" data-sup="${i}" aria-label="Retirer">×</button></div>`;
+  $("liste-marches").innerHTML = etat.marches.map((o, i) => { const m = marcheInfo(o); return ligne(`Accès ${i + 1}`, `${m.nb} marche${m.nb > 1 ? "s" : ""} de ${cm(m.r)}`, o, m.l, i, i === choixM); }).join("");
+  $("liste-ouvertures").innerHTML = etat.ouvertures.map((o, i) => ligne(OUVERTURES[o.type].nom, ext() ? "Sur le mur de la maison" : "Glissez-la le long du mur", o, o.l, i, i === choixO)).join("");
   const champ = (k, t, v, d = 2) => `<label>${t}<input type="text" inputmode="decimal" data-champ="${k}" value="${fr(v, d)}"></label>`;
   const bas = (k, a, b, v) => `<button type="button" class="bascule" data-bas="${k}" aria-pressed="${!!v}"><b>${a}</b><small>${b}</small></button>`;
   $("liste-elements").innerHTML = etat.elements.map((o, i) => {
@@ -1639,7 +1925,7 @@ function synchroniser() {
   $("angle").value = etat.angle; $("o-angle-pose").textContent = `${etat.angle}°`;
   appuyer("#marge", "data-v", etat.marge);
   $("melanger").hidden = etat.motif !== "aleatoire";
-  boutonsHistorique(); maj();
+  boutonsHistorique(); afficherOutils(); maj();
   const t = texteDepart(), maj1 = s => s[0].toUpperCase() + s.slice(1);
   groupe("depart", [["debut", maj1(t.debut)], ["centre", "Centré"], ["fin", maj1(t.fin)]], etat.depart);
   afficherLames(); afficherDims(); afficherFinitions();
@@ -1649,13 +1935,14 @@ function etiquettes() {
   const ex = ext(), noms = { projet: "Projet", forme: "Forme", elements: "Éléments", terrain: ex ? "Terrain" : "Support", revetement: ex ? "Lames" : "Revêtement", pose: "Pose", metre: "Métré" };
   $("etapes").innerHTML = ETAPES.map((n, k) => `<li><button type="button" data-aller="${k}" class="${k < etape ? "fait" : ""}" ${k === etape ? 'aria-current="step"' : ""}><i>${k < etape ? "✓" : k + 1}</i><span>${noms[n]}</span></button></li>`).join("");
   const fin = etape === ETAPES.length - 1;
-  $("precedent").hidden = etape === 0; $("suivant").hidden = fin;
-  if (!fin) $("suivant").textContent = etroit() ? "Suivant" : `Suivant : ${noms[ETAPES[etape + 1]]}`;
+  $("precedent").hidden = etape === 0; $("suivant").hidden = fin; $("suivant-plan").hidden = fin;
+  if (!fin) { $("suivant").textContent = etroit() ? "Suivant" : `Suivant : ${noms[ETAPES[etape + 1]]}`; $("suivant-plan").innerHTML = `${etape + 2}. ${esc(noms[ETAPES[etape + 1]])}${ico("fleche")}`; }
+  $("projet-arbre").innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Projet<span>›</span><b>${ex ? "Terrasse extérieure" : "Sol intérieur"}</b>${ex ? "" : `<span>›</span><b>${esc(etat.nom)}</b>`}`;
 }
 function allerEtape(i) {
   etape = clamp(i, 0, ETAPES.length - 1);
   document.querySelectorAll("[data-etape]").forEach(s => { s.hidden = s.dataset.etape !== nomEtape(); });
-  choisirOutil("ajuster"); etiquettes();
+  fermerMenu(); afficherOutils(); choisirOutil("ajuster"); etiquettes();
   $("options").scrollTop = 0;
   if (etroit()) { const c = document.querySelector("#etapes [aria-current]"); if (c) c.scrollIntoView({ inline: "center", block: "nearest" }); }
   if (etape <= 1 && vue !== "plan") changerVue("plan");
@@ -1668,7 +1955,7 @@ function changerLieu(l) {
   const ex = l === "exterieur", p = CATALOGUE.find(q => q.id === (ex ? "pin" : "contrecolle"));
   Object.assign(etat, { lieu: l, produit: p.id, motif: MOTIFS[p.fam][0][0], marge: ex ? 5 : 10, depart: ex ? "fin" : "debut", angle: 0, forme: "rectangle", poly: copieForme("rectangle"), marches: [], ouvertures: [], elements: [], id: 1, nom: "Pièce 1", active: 0 });
   etat.pieces = [copie(extraire(etat))]; memo.clear();
-  famille = "tout"; choix = -1; fond = null; mode = null; calibration = []; bandeau(""); choixFond("exemple"); fondActif(); synchroniser(); cadrer();
+  famille = "tout"; choisir("", -1); fond = null; mode = null; calibration = []; bandeau(""); choixFond("exemple"); fondActif(); synchroniser(); cadrer();
 }
 $("etapes").addEventListener("click", e => { const b = e.target.closest("[data-aller]"); if (b) allerEtape(+b.dataset.aller); });
 $("precedent").addEventListener("click", () => allerEtape(etape - 1));
@@ -1707,7 +1994,7 @@ $("barre-pieces").addEventListener("click", e => { const b = e.target.closest("[
 $("nom-piece").addEventListener("change", e => { const v = e.target.value.trim().slice(0, 30); if (!v) { e.target.value = etat.nom; return; } memoriser(); etat.nom = v; synchroniser(); });
 $("suppr-piece").addEventListener("click", () => {
   if (etat.pieces.length < 2) return; memoriser();
-  const i = etat.active, nom = etat.nom; etat.pieces.splice(i, 1); etat.active = 0; Object.assign(etat, copie(etat.pieces[0])); memo.clear(); choix = -1; synchroniser(); cadrer(); toast(`${nom} supprimée.`);
+  const i = etat.active, nom = etat.nom; etat.pieces.splice(i, 1); etat.active = 0; Object.assign(etat, copie(etat.pieces[0])); memo.clear(); choisir("", -1); synchroniser(); cadrer(); toast(`${nom} supprimée.`);
 });
 $("ajout-zones").addEventListener("click", e => { const b = e.target.closest("[data-z]"); if (b) choisirOutil(typeOutil === b.dataset.z ? "ajuster" : "zone", typeOutil === b.dataset.z ? "" : b.dataset.z); });
 function ajouterElement(e) {
@@ -1723,7 +2010,8 @@ function ajouterElement(e) {
     etat.poly = [{ x: bb.umin, y: bb.vmin }, { x: bb.umin + L, y: bb.vmin }, { x: bb.umin + L, y: bb.vmin + P }, { x: bb.umin, y: bb.vmin + P }]; o.x = bb.umin + L / 2; o.y = bb.vmin + P / 2;
     toast("Terrasse agrandie autour du bassin.");
   }
-  etat.elements.push(o); choix = etat.elements.length - 1;
+  if (!placerLibre(o, etat.elements.length)) toast("Pas de place libre : l’élément chevauche un autre, déplacez-le.");
+  etat.elements.push(o); choisir("elements", etat.elements.length - 1);
   if (vue !== "plan") changerVue("plan");
   synchroniser(); cadrer();
 }
@@ -1732,26 +2020,24 @@ for (const [id, k] of [["env-bat", "envBat"], ["env-arbres", "envArbres"]]) $(id
 $("liste-elements").addEventListener("click", e => {
   const c = e.target.closest("[data-i]"); if (!c) return;
   const i = +c.dataset.i, o = etat.elements[i], b = e.target.closest("button");
-  choix = i;
-  if (b && b.dataset.rot !== undefined) { memoriser(); o.rot = (o.rot + 90) % 360; synchroniser(); }
-  else if (b && b.dataset.sup !== undefined) { memoriser(); etat.elements.splice(i, 1); choix = -1; synchroniser(); }
+  choisir("elements", i);
+  if (b && b.dataset.rot !== undefined) tournerElement(i);
+  else if (b && b.dataset.sup !== undefined) { memoriser(); etat.elements.splice(i, 1); choisir("", -1); synchroniser(); }
   else if (b && b.dataset.bas) { memoriser(); o[b.dataset.bas] = !o[b.dataset.bas]; synchroniser(); }
   else if (!e.target.closest("input")) { afficherListes(); planifier(); }
 });
 $("liste-elements").addEventListener("change", e => {
   const k = e.target.dataset.champ; if (!k) return;
-  const i = +e.target.closest("[data-i]").dataset.i, o = etat.elements[i], v = parseFloat(e.target.value.replace(",", ".")), lim = { l: [0.05, 30], p: [0.05, 30], ht: [0.2, 6], hb: [0.2, 2.5], rot: [-360, 360] }[k];
-  if (!Number.isFinite(v) || v < lim[0] || v > lim[1]) { toast(`Valeur attendue entre ${fr(lim[0], 2)} et ${fr(lim[1], 0)}.`); afficherListes(); return; }
-  memoriser(); o[k] = k === "rot" ? mod(Math.round(v), 360) : Math.round(v * 100) / 100;
-  if (ELEMENTS[o.type].rond) o.p = o.l;
-  if (o.type === "escalier") o.p = infoEscalier(o).course;
-  synchroniser();
+  const i = +e.target.closest("[data-i]").dataset.i, v = parseFloat(e.target.value.replace(",", "."));
+  retailler(i, k, v);
 });
 function listeEdition(id, cle, mini, maxi) {
   $(id).addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return; memoriser();
-    if (b.dataset.sup !== undefined) etat[cle].splice(+b.dataset.sup, 1);
-    else { const i = +(b.dataset.plus ?? b.dataset.moins), o = etat[cle][i], pasL = 0.1; o.l = clamp(Math.round((o.l + (b.dataset.plus !== undefined ? pasL : -pasL)) * 100) / 100, mini, maxi); }
+    const b = e.target.closest("button"), it = e.target.closest("[data-sel]");
+    if (!b) { if (it) { choisir(cle, +it.dataset.sel); afficherListes(); planifier(); } return; }
+    memoriser();
+    if (b.dataset.sup !== undefined) { etat[cle].splice(+b.dataset.sup, 1); choisir("", -1); }
+    else { const i = +(b.dataset.plus ?? b.dataset.moins), o = etat[cle][i], pasL = 0.1; o.l = clamp(Math.round((o.l + (b.dataset.plus !== undefined ? pasL : -pasL)) * 100) / 100, mini, maxi); choisir(cle, i); }
     synchroniser();
   });
 }
@@ -2015,9 +2301,9 @@ async function changerVue(v) {
   document.querySelectorAll("[data-vue]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vue === v)));
   const t = v === "3d";
   $("vue3d").hidden = !t; cvs.hidden = t; calque.style.display = t ? "none" : "";
-  $("z-moins").hidden = $("z-plus").hidden = $("z-cadre").hidden = t;
+  $("z-moins").hidden = $("z-plus").hidden = $("z-cadre").hidden = $("z-main").hidden = t;
   $("credit").hidden = !(fond && fond.aerien);
-  afficherLegende();
+  afficherLegende(); afficherOutils(); fermerMenu(); if (t) $("bulle").hidden = true;
   if (t) { try { await chargerScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "THREE"); initialiser3D(); sceneModifiee(); } catch (e) { panneauErreur3D(); } }
   else planifier();
 }
@@ -2186,7 +2472,7 @@ function construirePiece(c, m, ip, formes) {
     const reel = !!(fond && fond.aerien);
     if (reel) decorReel(m, t, groupe);
     if (!reel || ouvs.length) {
-      const b = bordMaison >= 0 ? bords()[bordMaison] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) : 0;
+      const b = bordMaison >= 0 ? bords()[bordMaison] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
       const grp = new THREE.Group(); grp.position.set(mx, 0, mz); grp.rotation.y = -ang; groupe.add(grp);
       const large = (b ? Math.max(b.len, m.largeur) : m.largeur) + (reel ? 0 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2, murM = new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 });
       const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5;
