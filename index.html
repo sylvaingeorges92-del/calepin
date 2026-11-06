@@ -40,7 +40,7 @@ button { cursor: pointer; }
 h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.app { height: 100%; display: grid; grid-template-columns: 392px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr) 78px; }
+.app { height: 100%; display: grid; grid-template-columns: 392px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr) auto; }
 .tete { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 0 18px; background: var(--panneau); border-bottom: 1px solid var(--ligne); min-width: 0; }
 .marque { display: flex; align-items: center; gap: 9px; flex: none; }
 .marque svg { width: 26px; height: 26px; }
@@ -54,7 +54,7 @@ h2, h3, p { margin: 0; }
 .etapes button.fait i { background: var(--accent); color: var(--sur-accent); }
 .enregistrer { flex: none; height: 40px; padding: 0 14px; border-radius: 10px; border: 1.5px solid var(--ligne); background: none; font-weight: 600; }
 
-.scene { position: relative; grid-column: 2; grid-row: 2; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #6F8F4C; }
+.scene { position: relative; grid-column: 2; grid-row: 2 / 4; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #6F8F4C; }
 #plan, #calque { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #vue3d { position: absolute; inset: 0; background: #CFE3EE; cursor: grab; }
 #vue3d canvas { display: block; width: 100%; height: 100%; }
@@ -149,6 +149,14 @@ h2, h3, p { margin: 0; }
 .chapo { margin: 6px 0 16px; color: var(--doux); font-weight: 400; }
 .options h3 { margin: 20px 0 8px; font: 700 15.5px/1.2 var(--titre); }
 .aide { margin-top: 8px; color: var(--doux); font-size: 13px; font-weight: 400; }
+.enseignes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.enseignes button { padding: 7px 11px; border-radius: 999px; border: 1.5px solid var(--ligne); background: none; font-weight: 600; font-size: 13px; }
+.enseignes button[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); border-color: var(--noir); }
+.achats { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.achats li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--creux); min-width: 0; }
+.achats li > div { min-width: 0; }
+.achats b { display: block; font-weight: 700; font-size: 14px; } .achats small { display: block; color: var(--doux); font-size: 12.5px; }
+.achats a { flex: none; padding: 8px 12px; border-radius: 9px; background: var(--accent); color: var(--sur-accent); font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; }
 .mentions { margin-top: 14px; color: var(--doux); font-size: 12.5px; font-weight: 400; }
 .cartes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .choix { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; text-align: left; padding: 11px; background: var(--panneau); border: 1.5px solid var(--ligne); border-radius: 12px; box-sizing: border-box; }
@@ -256,7 +264,10 @@ h2, h3, p { margin: 0; }
 .pose-liste b { font-weight: 700; }
 .pose-liste span { color: var(--doux); font-weight: 400; font-size: 14px; }
 
-.pied { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 0 18px; background: var(--panneau); border-top: 1px solid var(--ligne); min-width: 0; }
+/* Le pied de la bande de gauche : résumé, surface, puis Précédent / Suivant toujours visibles sans défilement. */
+.pied { grid-column: 1; grid-row: 3; display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; grid-template-areas: "resume resume chiffre" "retour suivant suivant"; align-items: center; gap: 10px 12px; padding: 12px 20px 14px; background: var(--panneau); border-top: 1px solid var(--ligne); border-right: 1px solid var(--ligne); min-width: 0; box-shadow: 0 -8px 18px -14px rgba(0, 0, 0, .25); }
+.resume { grid-area: resume; } .chiffre { grid-area: chiffre; } .retour { grid-area: retour; } .suivant { grid-area: suivant; }
+.pied .retour[hidden] { display: none; } .pied .retour[hidden] + .suivant { grid-column: retour / suivant; }
 .resume { min-width: 0; flex: 1; }
 .resume b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .resume small { display: block; color: var(--doux); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -265,7 +276,7 @@ h2, h3, p { margin: 0; }
 .chiffre small { color: var(--doux); font-weight: 400; font-size: 12.5px; }
 .retour { flex: none; height: 50px; width: 50px; border-radius: 12px; border: 1.5px solid var(--ligne); background: none; display: grid; place-items: center; }
 .retour svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.suivant { flex: none; height: 50px; min-width: 214px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--noir); color: var(--sur-noir); font-weight: 700; white-space: nowrap; }
+.suivant { flex: none; height: 50px; min-width: 0; padding: 0 22px; border: 0; border-radius: 12px; background: var(--noir); color: var(--sur-noir); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .c-ligne { stroke: #fff; stroke-width: 1.2; fill: none; opacity: .9; }
 .sombre .c-ligne { stroke: #16201B; opacity: .55; }
@@ -314,6 +325,8 @@ h2, h3, p { margin: 0; }
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 54px minmax(0, 46fr) minmax(0, 54fr) 72px; }
   .scene { grid-column: 1; grid-row: 2; }
+  .pied { grid-column: 1; grid-row: 4; display: flex; border-right: 0; box-shadow: none; }
+  .suivant { min-width: 150px; }
   .tete { padding: 0 10px; gap: 8px; }
   .marque, .enregistrer { display: none; }
   .etapes { justify-content: flex-start; }
@@ -843,6 +856,7 @@ const etat = {
   produit: "pin", dims: {}, angle: 0, motif: "aleatoire", depart: "fin", graine: 7, marge: 5,
   cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true, rotation: 0
 };
+let enseigne = (() => { try { return localStorage.getItem(CLE + ":enseigne") || "leroymerlin"; } catch { return "leroymerlin"; } })();
 let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1, choixO = -1, choixM = -1, cotes = true, deplacer = false, tourner = false;
 function choisir(liste, i) { choix = liste === "elements" ? i : -1; choixO = liste === "ouvertures" ? i : -1; choixM = liste === "marches" ? i : -1; }
 let cam = { z: 60, ox: 0, oy: 0 }, calepin = null, fond = null, mode = null, calibration = [];
@@ -1226,33 +1240,72 @@ function calepiner() {
 }
 
 /* Rendu des matières */
+/* Textures procédurales des produits : 4 m × 1 m à 512 px/m, répétées en 3D.
+   Chaque produit reçoit deux images : la couleur (p.tex) et une carte de données (p.data : rouge = relief, vert = rugosité)
+   qui donne aux sols leur matière en 3D (grain du bois en léger relief, brillance variable du grès cérame, aspect brossé du composite). */
+const TW = 2048, TH = 512;
+function bruitPeriodique(seed) {
+  const r = hasard(seed), N = 256, tab = new Float32Array(N * N); for (let i = 0; i < tab.length; i++) tab[i] = r();
+  // Bruit de valeur interpolé, périodique sur px × py cellules (px, py entiers ≤ 256) : pas de raccord visible quand la texture se répète.
+  return (x, y, px, py) => {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const X0 = ((xi % px) + px) % px, X1 = (X0 + 1) % px, Y0 = (((yi % py) + py) % py) * N, Y1 = ((((yi + 1) % py) + py) % py) * N;
+    const a = tab[Y0 + X0], b = tab[Y0 + X1], c = tab[Y1 + X0], d = tab[Y1 + X1];
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  };
+}
+function fbm(n, x, y, px, py, oct, gain = 0.5) { let s = 0, a = 1, t = 0; for (let i = 0; i < oct; i++) { s += a * n(x, y, px, py); t += a; x *= 2; y *= 2; px *= 2; py *= 2; a *= gain; } return s / t; }
+// Champ lent calculé sur une grille grossière (pas px) puis interpolé : évite d'évaluer le bruit basse fréquence à chaque pixel.
+function champ(fn, pas) {
+  const w = TW / pas + 1, h = TH / pas + 1, t = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) t[j * w + i] = fn(i * pas, j * pas);
+  return (x, y) => { const u = x / pas, v = y / pas, i = u | 0, j = v | 0, fu = u - i, fv = v - j, k = j * w + i, a = t[k], b = t[k + 1], c = t[k + w], d = t[k + w + 1]; return a + (b - a) * fu + (c - a) * fv + (a - b - c + d) * fu * fv; };
+}
+const hexRVB = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 function texture(p) {
   if (p.tex) return p.tex;
-  const c = document.createElement("canvas"); c.width = 1024; c.height = 256;
-  const g = c.getContext("2d"), r = hasard(p.id.length * 97 + p.base.charCodeAt(2));
-  g.fillStyle = p.base; g.fillRect(0, 0, 1024, 256);
-  if (p.pierre) {
-    for (let i = 0; i < 170; i++) { const x = r() * 1024, y = r() * 256, ra = 18 + r() * 70, d = g.createRadialGradient(x, y, 0, x, y, ra), coul = r() < 0.5 ? "255,255,255" : "70,66,60"; d.addColorStop(0, `rgba(${coul},${0.012 + r() * 0.022})`); d.addColorStop(1, `rgba(${coul},0)`); g.fillStyle = d; g.fillRect(x - ra, y - ra, ra * 2, ra * 2); }
-    g.strokeStyle = p.veine;
-    for (let i = 0; i < 16; i++) { let x = r() * 1024, y = r() * 256; g.globalAlpha = 0.1 + r() * 0.18; g.lineWidth = 0.5 + r(); g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 9; k++) { x += 20 + r() * 40; y += (r() - 0.5) * 34; g.lineTo(x, y); } g.stroke(); }
-    g.globalAlpha = 1; p.tex = c; return c;
+  const seed = p.id.length * 97 + p.base.charCodeAt(2) + p.base.charCodeAt(5), n = bruitPeriodique(seed), n2 = bruitPeriodique(seed + 7), r = hasard(seed + 3);
+  const base = hexRVB(p.base), veine = hexRVB(p.veine).map(v => v * 0.88), clair = base.map(v => Math.min(255, v + 22 + (255 - v) * 0.1));
+  const c = document.createElement("canvas"); c.width = TW; c.height = TH; const g = c.getContext("2d"), im = g.createImageData(TW, TH), d = im.data;
+  const cd = document.createElement("canvas"); cd.width = TW; cd.height = TH; const gd = cd.getContext("2d"), imd = gd.createImageData(TW, TH), dd = imd.data;
+  const X = x => x / TW * 8, Y = y => y / TH * 2; // 1 cellule de bruit = 0,5 m
+  const fr0 = p.lieu === "interieur" ? 20 : 15, amp = p.lieu === "interieur" ? 3.2 : 4.5, warp = champ((x, y) => fbm(n, X(x) * 0.5, Y(y), 4, 2, 3), 4), tache = champ((x, y) => fbm(n, X(x) * 0.5 + 3, Y(y), 4, 2, 2), 8);
+  const nuage = champ((x, y) => fbm(n, X(x), Y(y), 8, 2, 5), 4), marbre = champ((x, y) => { const w = fbm(n, X(x) * 2 + 5, Y(y) * 2, 16, 4, 3); return fbm(n2, X(x) * 0.75 + w * 1.6, Y(y) * 1.5 + w * 2.2, 6, 3, 3); }, 2);
+  const clampU = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+    const o = (y * TW + x) * 4, xx = X(x), yy = Y(y); let rv, gv, bv, relief, rug;
+    if (p.pierre) {
+      // Grès cérame : nuages de teinte, veines fines, grain très léger, brillance qui varie.
+      const nu = nuage(x, y), m = marbre(x, y), v = Math.pow(1 - Math.abs(2 * m - 1), 16), grain = n2(xx * 24, yy * 24, 192, 48);
+      const k = clampU(v * 0.42 + (grain - 0.5) * 0.12);
+      rv = (base[0] + (clair[0] - base[0]) * nu) * (1 - k) + veine[0] * k; gv = (base[1] + (clair[1] - base[1]) * nu) * (1 - k) + veine[1] * k; bv = (base[2] + (clair[2] - base[2]) * nu) * (1 - k) + veine[2] * k;
+      relief = 0.5 + (nu - 0.5) * 0.12 - v * 0.15; rug = 0.3 + nu * 0.22 + v * 0.1;
+    } else if (p.lisse) {
+      // Composite ou vinyle : stries fines dans le sens de la lame (aspect brossé), léger nuage de teinte.
+      const st = fbm(n2, xx * 0.25, yy * 64, 2, 128, 2), ta = tache(x, y), k = clampU(0.5 + (st - 0.5) * 1.3) * 0.42;
+      const L = 0.93 + 0.14 * ta;
+      rv = (base[0] * (1 - k) + veine[0] * k) * L; gv = (base[1] * (1 - k) + veine[1] * k) * L; bv = (base[2] * (1 - k) + veine[2] * k) * L;
+      relief = 0.5 + (st - 0.5) * 0.5; rug = 0.68 + (st - 0.5) * 0.3;
+    } else {
+      // Bois : cernes ondulants (dosse), fibres fines, grandes taches de teinte d'une lame à l'autre.
+      const w = warp(x, y), fib = fbm(n2, xx * 6, yy * 48, 48, 96, 2), ta = tache(x, y);
+      const v = yy * fr0 + (w - 0.5) * amp + xx * 0.25; let ring = 0.5 + 0.5 * Math.cos(v * 6.2832); ring = ring * ring * ring;
+      const k = clampU(ring * 0.74 + (fib - 0.5) * 0.42 + 0.1), L = 0.85 + 0.28 * ta;
+      rv = (base[0] * (1 - k) + veine[0] * k) * L; gv = (base[1] * (1 - k) + veine[1] * k) * L; bv = (base[2] * (1 - k) + veine[2] * k) * L;
+      relief = 0.62 - ring * 0.34 - (fib - 0.5) * 0.3; rug = 0.52 + ring * 0.3 + (fib - 0.5) * 0.14;
+    }
+    d[o] = rv; d[o + 1] = gv; d[o + 2] = bv; d[o + 3] = 255;
+    dd[o] = clampU(relief) * 255; dd[o + 1] = clampU(rug) * 255; dd[o + 2] = 0; dd[o + 3] = 255;
   }
-  for (let i = 0; i < 70; i++) { g.globalAlpha = 0.04 + r() * 0.08; g.fillStyle = r() < 0.55 ? p.veine : "#FFFFFF"; g.fillRect(0, r() * 256, 1024, 2 + r() * 16); }
-  g.strokeStyle = p.veine;
-  for (let i = 0; i < (p.lisse ? 240 : 620); i++) {
-    const y = r() * 256, amp = p.lisse ? 0.4 : 1 + r() * 5, ph = r() * 6.28, f = 0.003 + r() * 0.008;
-    g.globalAlpha = 0.05 + r() * (p.lisse ? 0.08 : 0.22); g.lineWidth = 0.4 + r() * 1.5;
-    g.beginPath();
-    for (let x = 0; x <= 1056; x += 24) { const yy = y + Math.sin(x * f + ph) * amp; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
-    g.stroke();
+  g.putImageData(im, 0, 0); gd.putImageData(imd, 0, 0);
+  if (p.noeuds) for (let i = 0; i < 7; i++) {
+    const x = r() * TW, y = r() * TH, nn = 5 + r() * 9, rot = (r() - 0.5) * 0.4;
+    g.globalAlpha = 0.55; g.fillStyle = p.veine; g.beginPath(); g.ellipse(x, y, nn * 1.7, nn, rot, 0, 6.3); g.fill();
+    g.globalAlpha = 0.22; g.strokeStyle = p.veine; g.lineWidth = 1.2;
+    for (let j = 1; j < 6; j++) { g.beginPath(); g.ellipse(x, y, nn * (1.7 + j * 1.4), nn + j * 3.2, rot, 0, 6.3); g.stroke(); }
+    gd.globalAlpha = 0.5; gd.fillStyle = "#30A000"; gd.beginPath(); gd.ellipse(x, y, nn * 1.7, nn, rot, 0, 6.3); gd.fill();
   }
-  if (p.noeuds) for (let i = 0; i < 9; i++) {
-    const x = r() * 1024, y = r() * 256, n = 3 + r() * 5;
-    g.globalAlpha = 0.55; g.fillStyle = p.veine; g.beginPath(); g.ellipse(x, y, n * 1.6, n, 0, 0, 6.3); g.fill();
-    g.globalAlpha = 0.25; g.lineWidth = 1;
-    for (let j = 1; j < 4; j++) { g.beginPath(); g.ellipse(x, y, n * (1.6 + j), n + j * 2, 0, 0, 6.3); g.stroke(); }
-  }
-  g.globalAlpha = 1; p.tex = c; return c;
+  g.globalAlpha = gd.globalAlpha = 1; p.tex = c; p.data = cd; return c;
 }
 let herbeMotif = null;
 function motifHerbe(cible) {
@@ -1332,8 +1385,8 @@ function dessinerLames(alpha, base) {
     for (const pc of c.pieces45) for (const f of pc.morceaux) {
       ctx.save(); ctx.beginPath(); f.forEach((q, i) => i ? ctx.lineTo(q.u, q.v) : ctx.moveTo(q.u, q.v)); ctx.closePath(); ctx.clip();
       ctx.translate(pc.cx, pc.cy); ctx.rotate(Math.atan2(pc.dy, pc.dx));
-      const lgT = pc.lgPlein + pc.ht, sw = Math.min(1024, lgT * 256), sh = Math.max(8, Math.min(256, pc.ht * 256)); // la lame peut déborder d'une largeur derrière l'origine (coupe à 45° dans l'autre sens)
-      ctx.drawImage(tex, pc.ox * (1024 - sw), pc.oy * (256 - sh), sw, sh, -pc.ht, 0, lgT, pc.ht);
+      const lgT = pc.lgPlein + pc.ht, sw = Math.min(TW, lgT * TH), sh = Math.max(8, Math.min(TH, pc.ht * TH)); // la lame peut déborder d'une largeur derrière l'origine (coupe à 45° dans l'autre sens)
+      ctx.drawImage(tex, pc.ox * (TW - sw), pc.oy * (TH - sh), sw, sh, -pc.ht, 0, lgT, pc.ht);
       ctx.fillStyle = pc.t < 0.34 ? "rgba(0,0,0,.10)" : pc.t < 0.67 ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.08)"; ctx.fillRect(-pc.ht, 0, lgT, pc.ht);
       ctx.restore();
     }
@@ -1342,8 +1395,8 @@ function dessinerLames(alpha, base) {
     ctx.restore(); return;
   }
   for (const rg of c.rangs) for (const pc of rg.pieces) {
-    const l = pc.b - pc.a, h = rg.v1 - rg.v0, sw = Math.min(1024, l * 256), sh = Math.max(8, Math.min(256, h * 256));
-    ctx.drawImage(tex, pc.ox * (1024 - sw), pc.oy * (256 - sh), sw, sh, pc.a, rg.v0, l, h);
+    const l = pc.b - pc.a, h = rg.v1 - rg.v0, sw = Math.min(TW, l * TH), sh = Math.max(8, Math.min(TH, h * TH));
+    ctx.drawImage(tex, pc.ox * (TW - sw), pc.oy * (TH - sh), sw, sh, pc.a, rg.v0, l, h);
     ctx.fillStyle = c.p.pierre ? (pc.t < 0.5 ? "rgba(0,0,0,.025)" : "rgba(255,255,255,.03)") : pc.t < 0.34 ? "rgba(0,0,0,.10)" : pc.t < 0.67 ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.08)";
     ctx.fillRect(pc.a, rg.v0, l, h);
   }
@@ -1359,7 +1412,7 @@ function dessinerCadre() {
     [b.A, b.B, inner[j], inner[i]].forEach((q, k) => { const e = ecran(q); if (k) ctx.lineTo(e.x, e.y); else ctx.moveTo(e.x, e.y); });
     ctx.closePath(); ctx.fillStyle = "#2F271E"; ctx.fill(); ctx.clip();
     ctx.transform(b.ux * cam.z, b.uy * cam.z, -b.nx * cam.z, -b.ny * cam.z, cam.ox + b.A.x * cam.z, cam.oy + b.A.y * cam.z);
-    const sw = Math.min(1024, b.len * 256); ctx.drawImage(tex, ((i * 37) % 10) / 10 * (1024 - sw), 40, sw, w * 256, 0, 0, b.len, w);
+    const sw = Math.min(TW, b.len * TH); ctx.drawImage(tex, ((i * 37) % 10) / 10 * (TW - sw), 80, sw, w * TH, 0, 0, b.len, w);
     ctx.restore();
     const a0 = ecran(inner[i]), a1 = ecran(inner[j]); ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y); ctx.moveTo(ecran(b.A).x, ecran(b.A).y); ctx.lineTo(a0.x, a0.y); ctx.stroke();
   });
@@ -1388,7 +1441,7 @@ function dessinerMarches() {
     for (let k = 0; k < m.nb; k++) {
       ctx.fillStyle = "#2F271E"; ctx.fillRect(-m.l / 2, k * m.g, m.l, m.g);
       const nb = Math.max(1, Math.ceil(m.g / c.pas));
-      for (let j = 0; j < nb; j++) { const h = Math.min(c.w, m.g / nb - 0.004), sw = Math.min(1024, m.l * 256); ctx.drawImage(tex, ((k * 3 + j * 7) % 10) / 10 * (1024 - sw), ((k + j * 5) % 7) * 20, sw, Math.max(8, h * 256), -m.l / 2, k * m.g + j * m.g / nb, m.l, h); }
+      for (let j = 0; j < nb; j++) { const h = Math.min(c.w, m.g / nb - 0.004), sw = Math.min(TW, m.l * TH); ctx.drawImage(tex, ((k * 3 + j * 7) % 10) / 10 * (TW - sw), ((k + j * 5) % 7) * 40, sw, Math.max(8, h * TH), -m.l / 2, k * m.g + j * m.g / nb, m.l, h); }
       ctx.lineWidth = 1.4 / cam.z; ctx.strokeStyle = "#16201B"; ctx.strokeRect(-m.l / 2, k * m.g, m.l, m.g);
     }
     ctx.restore();
@@ -2183,6 +2236,67 @@ function metre() {
   }
   return s;
 }
+/* ---- Liste d'achats et liens vers les enseignes ----
+   AFFILIATION : renseignez ici vos identifiants une fois inscrit comme éditeur.
+   - Awin (https://www.awin.com) héberge les programmes Leroy Merlin FR, Castorama FR et ManoMano FR : affid = votre identifiant éditeur,
+     mids = l'identifiant de chaque programme (visible dans votre compte Awin, rubrique « Annonceurs »).
+   - Amazon Partenaires : tag = votre identifiant de type « monsite-21 ».
+   Tant qu'un identifiant manque, le lien reste une simple recherche sur le site de l'enseigne (rien ne casse). */
+const AFFILIATION = {
+  awin: { affid: "", mids: { leroymerlin: "", castorama: "", manomano: "" } },
+  amazon: { tag: "" },
+};
+const ENSEIGNES = [
+  { id: "leroymerlin", nom: "Leroy Merlin", url: q => `https://www.leroymerlin.fr/search?q=${encodeURIComponent(q)}` },
+  { id: "castorama", nom: "Castorama", url: q => `https://www.castorama.fr/search?term=${encodeURIComponent(q)}` },
+  { id: "manomano", nom: "ManoMano", url: q => `https://www.manomano.fr/recherche/${encodeURIComponent(q)}` },
+  { id: "amazon", nom: "Amazon", url: q => `https://www.amazon.fr/s?k=${encodeURIComponent(q)}` },
+];
+function lienEnseigne(e, q) {
+  const u = e.url(q);
+  if (e.id === "amazon") return AFFILIATION.amazon.tag ? `${u}&tag=${encodeURIComponent(AFFILIATION.amazon.tag)}` : u;
+  const a = AFFILIATION.awin, mid = a.mids[e.id];
+  return a.affid && mid ? `https://www.awin1.com/cread.php?awinmid=${encodeURIComponent(mid)}&awinaffid=${encodeURIComponent(a.affid)}&clickref=calepin&ued=${encodeURIComponent(u)}` : u;
+}
+const RECHERCHE = { pin: "lame terrasse pin autoclave", douglas: "lame terrasse douglas", meleze: "lame terrasse mélèze", exotique: "lame terrasse bois exotique", composite: "lame terrasse composite gris", compobrun: "lame terrasse composite brun", contrecolle: "parquet contrecollé chêne", strat: "sol stratifié chêne", vinyle: "sol vinyle clipsable", c60: "carrelage grès cérame 60x60", c80: "carrelage grès cérame 80x80", c120: "carrelage grès cérame 120x60", c30: "carrelage 30x30", imit: "carrelage imitation parquet" };
+function listeAchats() {
+  const c = calepin, p = c.p, d = c.d, S = c.surfaceUtile, l = [], m2 = v => `${fr(v)} m²`, ml = v => `${fr(v, 1)} m`;
+  const q = (nom, qte, recherche, detail) => l.push({ nom, qte, recherche: recherche || nom.toLowerCase(), detail });
+  if (c.estExt) {
+    let extra = 0; if (etat.cadre) extra += emballer(bords().map(b => b.len), c.Lm); for (const r of c.lots) extra += (r.nbMargelle || 0) + (r.nbHabillage || 0);
+    q(p.nom, `${fr(c.nbPieces + extra)} lames`, RECHERCHE[p.id], `${d.l} × ${d.e} mm, ${longueur(d.L)} m`);
+    q("Lambourdes", `${fr(c.nbLamb)} de 3 m`, p.fam === "composite" ? "lambourde composite terrasse" : "lambourde bois terrasse 3 m");
+    q("Plots réglables", fr(c.nbPlots), "plot réglable terrasse", "Voir les hauteurs dans le métré");
+    q(p.fix === "vis" ? "Vis inox terrasse" : "Clips de fixation", p.fix === "vis" ? `${fr(Math.ceil(c.fixations / 200))} boîtes de 200` : `${fr(Math.ceil(c.fixations / 100))} boîtes de 100`, p.fix === "vis" ? "vis terrasse inox" : "clips lame terrasse composite");
+    q("Bande bitumineuse", ml(c.mlLamb), "bande bitumineuse lambourde");
+    q("Géotextile", m2(Math.ceil(S * 1.1)), "géotextile");
+    if (etat.spots) q("Spots encastrables", fr(etat.spots), "spot encastrable terrasse led");
+  } else {
+    const parquet = p.fam === "parquet", Se = S + c.lots.reduce((v, r) => v + (r.sMarches || 0) + (r.sContre || 0), 0), paquets = Math.ceil((c.nbPieces + c.lots.reduce((v, r) => v + (r.nbPieces || 0), 0)) / (d.n || 1));
+    q(p.nom, `${fr(paquets)} boîtes`, RECHERCHE[p.id], `${fr(Se, 1)} m², ${d.L} × ${d.l} mm`);
+    if (parquet) {
+      q("Sous-couche", m2(Math.ceil(S * 1.05)), "sous-couche parquet");
+      if (etat.support !== "bois") q("Film polyéthylène", m2(Math.ceil(S * 1.1)), "film polyane sous parquet");
+      q("Cales de dilatation", fr(Math.ceil(c.perimetre / 0.5)), "cales de dilatation parquet");
+    } else {
+      const { kg, jointKg } = consoCarrelage(d);
+      q("Colle à carrelage", `${fr(Math.ceil(Se * kg / 25))} sacs de 25 kg`, "colle carrelage 25 kg");
+      q("Mortier de joint", `${fr(Math.ceil(Se * jointKg * 1.3))} kg`, "mortier joint carrelage");
+      q("Croisillons", fr(c.nbPosees * 2), `croisillons carrelage ${d.j} mm`);
+      q("Primaire d’accrochage", m2(Math.ceil(Se)), "primaire d'accrochage carrelage");
+    }
+    if (etat.plinthes) q("Plinthes", ml(c.mlPlinthes), parquet ? "plinthe bois" : "plinthe carrelage");
+    const seuils = etat.ouvertures.filter(o => OUVERTURES[o.type].seuil).length; if (seuils) q("Barres de seuil", fr(seuils), "barre de seuil");
+    if (etat.ecart > 5) q("Ragréage", `${fr(Math.ceil(S * (etat.ecart / 2 + 3) * 1.6 / 25))} sacs de 25 kg`, "ragréage autolissant 25 kg");
+  }
+  return l;
+}
+function achatsHTML() {
+  const ens = ENSEIGNES.find(e => e.id === enseigne) || ENSEIGNES[0];
+  return `<h3>Acheter les matériaux</h3><div class="enseignes" role="group" aria-label="Enseigne">${ENSEIGNES.map(e => `<button type="button" data-ens="${e.id}" aria-pressed="${e.id === ens.id}">${e.nom}</button>`).join("")}</div>
+<ul class="achats">${listeAchats().map(a => `<li><div><b>${esc(a.nom)}</b><small>${esc(a.qte)}${a.detail ? " · " + esc(a.detail) : ""}</small></div><a href="${lienEnseigne(ens, a.recherche)}" target="_blank" rel="noopener sponsored">Voir chez ${esc(ens.nom)}</a></li>`).join("")}</ul>
+<p class="aide">Liens commerciaux : si vous achetez après avoir cliqué, Calepin peut recevoir une commission de l’enseigne, sans surcoût pour vous. Les quantités restent à vérifier avec la notice du fabricant.</p>`;
+}
 function texteDepart() {
   const c = calepin, cote = (dx, dy) => Math.abs(dy) >= Math.abs(dx) - 1e-6 ? (dy > 0 ? "bas" : "haut") : (dx > 0 ? "droit" : "gauche");
   return { debut: `bord ${cote(c.si, -c.co)}`, fin: `bord ${cote(-c.si, c.co)}` };
@@ -2251,7 +2365,8 @@ function afficherMetre() {
   $("alertes-metre").innerHTML = html(A); $("alertes-terrain").innerHTML = html(A);
   if (nomEtape() !== "metre") return;
   $("chapo-metre").textContent = `${$("p-surface").textContent} en ${p.nom.toLowerCase()}.`;
-  $("o-metre").innerHTML = metre().map(([t, l]) => `<h3>${t}</h3><table class="lignes"><tbody>${l.map(([a, b, x]) => `<tr><th scope="row">${a}${x ? `<small>${x}</small>` : ""}</th><td>${b}</td></tr>`).join("")}</tbody></table>`).join("");
+  $("o-metre").innerHTML = metre().map(([t, l]) => `<h3>${t}</h3><table class="lignes"><tbody>${l.map(([a, b, x]) => `<tr><th scope="row">${a}${x ? `<small>${x}</small>` : ""}</th><td>${b}</td></tr>`).join("")}</tbody></table>`).join("") + achatsHTML();
+  $("o-metre").querySelectorAll("[data-ens]").forEach(b => b.addEventListener("click", () => { enseigne = b.dataset.ens; try { localStorage.setItem(CLE + ":enseigne", enseigne); } catch {} afficherMetre(); }));
   $("o-pose").innerHTML = etapesPose().map(([t, x]) => `<li><b>${t}</b><span>${x}</span></li>`).join("");
   const lc = [...c.coupes.entries()].map(([k, n]) => { const [l, h, b] = k.split("|").map(Number); return { l, h, b, n }; }).sort((a, f) => f.n - a.n || f.l - a.l);
   const w = Math.round(c.w * 100), visibles = lc.slice(0, 40);
@@ -2710,16 +2825,18 @@ function prismeM(g, q0, y0, y1, uv0) {
 }
 function maillage(centre) {
   const c = calepin, d = c.d, bb = boiteEnglobante(etat.poly), cx = centre ? centre.x : (bb.umin + bb.umax) / 2, cz = centre ? centre.z : (bb.vmin + bb.vmax) / 2, t = terrain();
-  const m = () => ({ pos: [], nor: [], uv: [], idx: [] }), bois = [m(), m(), m()], lamb = m(), plots = m(), bassin = m();
+  const m = () => ({ pos: [], nor: [], uv: [], idx: [] }), bois = [m(), m(), m()], lamb = m(), plots = m(), bassin = m(), traits = [];
   const v3 = P => ({ x: P.x - cx, z: P.y - cz }), loc3 = (u, v) => v3(c.versMonde(u, v));
   const h3 = c.estExt ? etat.hauteur / 100 : c.ep, h2 = c.estExt ? h3 - c.ep : 0, h1 = Math.max(0.01, h2 - SECTION.h), uvQ = (u0, v0, l, w) => [u0, v0 + w, u0 + l / 4, v0 + w, u0 + l / 4, v0, u0, v0];
+  // Un fin trait marque le bord de chaque lame ou carreau (le joint reste lisible de loin), comme sur le plan.
+  const trait = pts => pts.forEach((q, i) => { const r = pts[(i + 1) % pts.length]; traits.push(q.x, h3 + 0.0006, q.z, r.x, h3 + 0.0006, r.z); });
   for (const rg of c.rangs) for (const pc of rg.pieces) {
     const g = bois[pc.t < 0.34 ? 2 : pc.t < 0.67 ? 1 : 0], u0 = pc.ox * 4, v0 = pc.oy * 4;
-    for (const f of pc.morceaux) prismeM(g, f.map(q => loc3(q.u, q.v)), h2, h3, f.flatMap(q => [u0 + (q.u - pc.a) / 4, v0 + (q.v - pc.c)]));
+    for (const f of pc.morceaux) { const pts = f.map(q => loc3(q.u, q.v)); prismeM(g, pts, h2, h3, f.flatMap(q => [u0 + (q.u - pc.a) / 4, v0 + (q.v - pc.c)])); trait(pts); }
   }
   if (c.pieces45) for (const pc of c.pieces45) {
     const g = bois[pc.t < 0.34 ? 2 : pc.t < 0.67 ? 1 : 0], u0 = pc.ox * 4, v0 = pc.oy * 4;
-    for (const f of pc.morceaux) prismeM(g, f.map(q => loc3(q.u, q.v)), h2, h3, f.flatMap(q => [u0 + ((q.u - pc.cx) * pc.dx + (q.v - pc.cy) * pc.dy) / 4, v0 + (-(q.u - pc.cx) * pc.dy + (q.v - pc.cy) * pc.dx)]));
+    for (const f of pc.morceaux) { const pts = f.map(q => loc3(q.u, q.v)); prismeM(g, pts, h2, h3, f.flatMap(q => [u0 + ((q.u - pc.cx) * pc.dx + (q.v - pc.cy) * pc.dy) / 4, v0 + (-(q.u - pc.cx) * pc.dy + (q.v - pc.cy) * pc.dx)])); trait(pts); }
   }
   if (c.estExt) {
     for (const l of c.lambourdes) {
@@ -2746,7 +2863,7 @@ function maillage(centre) {
       }
     }
   }
-  return { bois, lamb, plots, bassin, largeur: bb.umax - bb.umin, profondeur: bb.vmax - bb.vmin, h3, cx, cz, zmin: bb.vmin - cz };
+  return { bois, lamb, plots, bassin, traits, largeur: bb.umax - bb.umin, profondeur: bb.vmax - bb.vmin, h3, cx, cz, zmin: bb.vmin - cz };
 }
 let T = null, sale = false, boucle3D = false;
 function panneauErreur3D() { $("vue3d").innerHTML = '<p style="padding:90px 24px 0;text-align:center;color:#16201B">La vue 3D ne peut pas se charger ici.</p>'; }
@@ -2866,17 +2983,34 @@ async function changerVue(v) {
   else planifier();
 }
 const teinte = c => new THREE.Color(c).convertSRGBToLinear();
+/* Carte d'environnement procédurale (ciel + soleil, ou plafond éclairé) : donne les reflets du grès cérame, le satiné du bois et du composite. */
+function environnement(r, interieur) {
+  const W = 512, H = 256, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"), im = g.createImageData(W, H), d = im.data, sun = new THREE.Vector3(-8, 10, 9).normalize();
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const u = i / W, v = 1 - j / H, phi = (v - 0.5) * Math.PI, th = (u - 0.5) * 2 * Math.PI, dx = Math.cos(phi) * Math.cos(th), dz = Math.cos(phi) * Math.sin(th), dy = Math.sin(phi); let R, G, B;
+    if (interieur) { const t = clamp((dy + 0.25) / 1.25, 0, 1), k = Math.exp(-(dx * dx + dz * dz) * 16) * Math.max(0, dy); R = 70 + 185 * t + 150 * k; G = 66 + 180 * t + 140 * k; B = 60 + 168 * t + 110 * k; }
+    else {
+      if (dy >= 0) { const s2 = (1 - dy) * (1 - dy); R = 95 + 65 * s2; G = 150 + 45 * s2; B = 215; } else { const q = clamp(-dy * 2.5, 0, 1); R = 150 - 80 * q; G = 170 - 75 * q; B = 150 - 95 * q; }
+      const cosA = dx * sun.x + dy * sun.y + dz * sun.z, halo = Math.exp((cosA - 1) * 12) * 60, k = Math.exp(Math.max(0, cosA - 0.985) * 400) - 1;
+      R += halo + k * 20; G += halo * 0.95 + k * 18; B += halo * 0.8 + k * 14;
+    }
+    const o = (j * W + i) * 4; d[o] = Math.min(255, R); d[o + 1] = Math.min(255, G); d[o + 2] = Math.min(255, B); d[o + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  const tx = new THREE.CanvasTexture(c); tx.mapping = THREE.EquirectangularReflectionMapping; tx.encoding = THREE.sRGBEncoding;
+  const pm = new THREE.PMREMGenerator(r); pm.compileEquirectangularShader(); const env = pm.fromEquirectangular(tx).texture; pm.dispose(); tx.dispose(); return env;
+}
 function initialiser3D() {
   if (T) { T.resize(); return; }
   const hote = $("vue3d"), r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.92;
+  r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.84;
   r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; hote.appendChild(r.domElement);
   const s = new THREE.Scene(), ciel = document.createElement("canvas"); ciel.width = 16; ciel.height = 256;
   const gc = ciel.getContext("2d"), dg = gc.createLinearGradient(0, 0, 0, 256); dg.addColorStop(0, "#8FC1E3"); dg.addColorStop(0.62, "#DCEBF2"); dg.addColorStop(0.75, "#EEF3EA"); gc.fillStyle = dg; gc.fillRect(0, 0, 16, 256);
   const tc = new THREE.CanvasTexture(ciel); tc.encoding = THREE.sRGBEncoding;
   const brume = new THREE.Fog(0xE3EEF2, 26, 85);
-  s.add(new THREE.HemisphereLight(0xDDEEFF, 0x5A6A40, 0.62));
-  const sol = new THREE.DirectionalLight(0xFFF1D8, 1.2); sol.position.set(-8, 10, 9); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.0004; sol.shadow.radius = 4; s.add(sol); s.add(sol.target);
+  s.add(new THREE.HemisphereLight(0xDDEEFF, 0x5A6A40, 0.32));
+  const sol = new THREE.DirectionalLight(0xFFF1D8, 1.25); sol.position.set(-8, 10, 9); sol.castShadow = true; sol.shadow.mapSize.set(4096, 4096); sol.shadow.bias = -0.0003; sol.shadow.normalBias = 0.01; sol.shadow.radius = 3; s.add(sol); s.add(sol.target);
   const herbe = document.createElement("canvas"); herbe.width = herbe.height = 512;
   const gh = herbe.getContext("2d"), ra = hasard(99); gh.fillStyle = "#587A3A"; gh.fillRect(0, 0, 512, 512);
   for (let i = 0; i < 26000; i++) { const c = ra(); gh.fillStyle = c < 0.34 ? "rgba(36,64,26,.55)" : c < 0.67 ? "rgba(112,146,70,.5)" : "rgba(74,108,46,.5)"; gh.fillRect(ra() * 512, ra() * 512, 1 + ra() * 1.6, 2 + ra() * 5); }
@@ -2884,7 +3018,7 @@ function initialiser3D() {
   const pelouse = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ map: th, roughness: 1 })); pelouse.receiveShadow = true; s.add(pelouse);
   const groupe = new THREE.Group(); s.add(groupe);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 220);
-  T = { r, s, sol, groupe, camera, pelouse, tc, brume, theta: -0.5, phi: 1.27, rayon: 12, cible: new THREE.Vector3(0, 0.5, 0), hote, cle: "" };
+  T = { r, s, sol, groupe, camera, pelouse, tc, brume, theta: -0.5, phi: 1.27, rayon: 12, cible: new THREE.Vector3(0, 0.5, 0), hote, cle: "", envExt: environnement(r, false), envInt: environnement(r, true) };
   T.resize = () => { const l = hote.clientWidth || 1, h = hote.clientHeight || 1; r.setSize(l, h, false); camera.aspect = l / h; camera.updateProjectionMatrix(); rendu3D(); };
   const p3 = new Map(); let d0 = 0, r0 = 0;
   hote.addEventListener("pointerdown", e => { hote.setPointerCapture(e.pointerId); p3.set(e.pointerId, [e.clientX, e.clientY]); if (p3.size === 2) { const [a, b] = [...p3.values()]; d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); r0 = T.rayon; } });
@@ -3042,7 +3176,7 @@ function reconstruire3D() {
   const ex = ext(), formes = etat.pieces.map((_, i) => polyDe(i)), bG = boiteEnglobante(formes.flat()), centre = { x: (bG.umin + bG.umax) / 2, z: (bG.vmin + bG.vmax) / 2 };
   vider(T.groupe); T.occ = []; T.arbres = null;
   const reel = !!(ex && fond && fond.aerien);
-  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.fog = ex ? T.brume : null; T.brume.near = reel ? 90 : 26; T.brume.far = reel ? 240 : 85;
+  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.environment = ex ? T.envExt : T.envInt; T.s.fog = ex ? T.brume : null; T.brume.near = reel ? 90 : 26; T.brume.far = reel ? 240 : 85;
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
   const cle = `${etat.lieu}|${Math.round(taille * 2)}|${reel}`;
@@ -3051,9 +3185,11 @@ function reconstruire3D() {
 }
 function construirePiece(c, m, ip, formes) {
   const { groupe } = T, p = c.p, ex = c.estExt, t = terrain();
-  if (!p.tex3) { p.tex3 = new THREE.CanvasTexture(texture(p)); p.tex3.wrapS = p.tex3.wrapT = THREE.RepeatWrapping; p.tex3.encoding = THREE.sRGBEncoding; p.tex3.anisotropy = 8; }
+  if (!p.tex3) { const tx = cv => { const q = new THREE.CanvasTexture(cv); q.wrapS = q.wrapT = THREE.RepeatWrapping; q.anisotropy = 16; return q; }; p.tex3 = tx(texture(p)); p.tex3.encoding = THREE.sRGBEncoding; p.data3 = tx(p.data); }
   const ajoute = (g, mat, ombre = true) => { if (!g.idx.length) return; const me = new THREE.Mesh(geo(g), mat); me.castShadow = ombre; me.receiveShadow = true; groupe.add(me); };
-  m.bois.forEach((g, i) => { const k = [1, 0.88, 0.74][i]; ajoute(g, new THREE.MeshStandardMaterial({ map: p.tex3, roughness: p.pierre ? 0.35 : 0.78, color: new THREE.Color(k, k, k) })); });
+  // Trois nuances de lames ; la carte de données porte le relief (rouge) et la rugosité (vert) : grain du bois, brillance du grès cérame, brossé du composite.
+  m.bois.forEach((g, i) => { const k = [1, 0.87, 0.74][i]; ajoute(g, new THREE.MeshStandardMaterial({ map: p.tex3, bumpMap: p.data3, bumpScale: p.pierre ? 0.0005 : p.lisse ? 0.0008 : 0.0018, roughnessMap: p.data3, roughness: 1, metalness: 0, envMapIntensity: p.pierre ? 0.8 : p.lisse ? 0.4 : 0.55, color: new THREE.Color(k, k, k) })); });
+  if (m.traits.length) { const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(m.traits, 3)); groupe.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x1A1410, transparent: true, opacity: p.pierre ? 0.2 : 0.34 }))); }
   ajoute(m.lamb, new THREE.MeshStandardMaterial({ color: teinte(0x6B5236), roughness: 0.9 }), !etat.habillage);
   ajoute(m.plots, new THREE.MeshStandardMaterial({ color: teinte(0x1A1C1D), roughness: 0.7 }), !etat.habillage);
   ajoute(m.bassin, new THREE.MeshStandardMaterial({ color: teinte(0xBFDDE6), roughness: 0.5 }), false);
@@ -3117,7 +3253,7 @@ function construirePiece(c, m, ip, formes) {
       if (x < b.len - 0.001) paroi(murs, P(x), P(b.len), 0, 2.5, 0, n);
       if (etat.plinthes) { for (const o of ouvs) { if (o.y0 > 0.05) continue; if (o.d0 > y + 0.001) paroi(pl, P(y), P(o.d0), 0.001, 0.07, 0.012, n); y = Math.max(y, o.d1); } if (y < b.len - 0.001) paroi(pl, P(y), P(b.len), 0.001, 0.07, 0.012, n); }
     }
-    ajoute(murs, new THREE.MeshStandardMaterial({ color: teinte(0xF2EFE9), roughness: 0.95, emissive: teinte(0x8A8780) }), false);
+    ajoute(murs, new THREE.MeshStandardMaterial({ color: teinte(0xF2EFE9), roughness: 0.95, emissive: teinte(0x4A4743) }), false);
     ajoute(pl, new THREE.MeshStandardMaterial({ color: teinte(0xFFFFFF), roughness: 0.6 }), false);
     const chambranleM = new THREE.MeshStandardMaterial({ color: teinte(0xF7F5F0), roughness: 0.5 }), boisP = new THREE.MeshStandardMaterial({ color: teinte(0xB9A58B), roughness: 0.65 }), boisP2 = new THREE.MeshStandardMaterial({ color: teinte(0xC9B79C), roughness: 0.65 }), chromeM = new THREE.MeshStandardMaterial({ color: teinte(0xC9CDD0), roughness: 0.25, metalness: 0.8 }), vitreI = new THREE.MeshStandardMaterial({ color: teinte(0xBFDCE8), roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.4, emissive: teinte(0x5B7682), emissiveIntensity: 0.6 }), appuiM = new THREE.MeshStandardMaterial({ color: teinte(0xD9D4CC), roughness: 0.6 });
     const s0 = aireSignee(etat.poly) > 0 ? 0 : Math.PI;
