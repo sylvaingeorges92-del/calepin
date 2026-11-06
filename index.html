@@ -53,6 +53,9 @@ h2, h3, p { margin: 0; }
 .etapes button[aria-current="step"] i { background: var(--noir); color: var(--sur-noir); }
 .etapes button.fait i { background: var(--accent); color: var(--sur-accent); }
 .enregistrer { flex: none; height: 40px; padding: 0 14px; border-radius: 10px; border: 1.5px solid var(--ligne); background: none; font-weight: 600; }
+.jour-nuit { border: 1.5px solid var(--ligne); }
+.jour-nuit[aria-pressed="true"] { background: var(--creux); color: var(--encre); }
+:root[data-theme="dark"] .i-lune, :root:not([data-theme="dark"]) .i-soleil { display: none; }
 
 .scene { position: relative; grid-column: 2; grid-row: 2 / 4; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #6F8F4C; }
 #plan, #calque { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -366,6 +369,7 @@ h2, h3, p { margin: 0; }
       <strong>Calepin</strong>
     </div>
     <ol class="etapes" id="etapes" aria-label="Étapes"></ol>
+    <button class="ico jour-nuit" id="jour-nuit" type="button" aria-label="Passer en mode nuit" aria-pressed="false" data-tip="Mode jour / nuit"><svg class="i-lune" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="i-soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
     <button class="enregistrer" id="enregistrer" type="button">Enregistrer</button>
   </header>
 
@@ -856,6 +860,7 @@ const etat = {
   produit: "pin", dims: {}, angle: 0, motif: "aleatoire", depart: "fin", graine: 7, marge: 5,
   cadre: false, habillage: false, spots: 0, plinthes: true, site: null, envBat: true, envArbres: true, rotation: 0
 };
+let nuit = (() => { try { const v = localStorage.getItem(CLE + ":theme"); if (v) return v === "dark"; } catch {} return matchMedia("(prefers-color-scheme: dark)").matches; })();
 let enseigne = (() => { try { return localStorage.getItem(CLE + ":enseigne") || "leroymerlin"; } catch { return "leroymerlin"; } })();
 let etape = 0, vue = "plan", famille = "tout", onglet = "metre", outil = "ajuster", typeOutil = "", choix = -1, choixO = -1, choixM = -1, cotes = true, deplacer = false, tourner = false;
 function choisir(liste, i) { choix = liste === "elements" ? i : -1; choixO = liste === "ouvertures" ? i : -1; choixM = liste === "marches" ? i : -1; }
@@ -2519,6 +2524,14 @@ function changerLieu(l) {
 }
 $("etapes").addEventListener("click", e => { const b = e.target.closest("[data-aller]"); if (b) allerEtape(+b.dataset.aller); });
 $("precedent").addEventListener("click", () => allerEtape(etape - 1));
+/* Mode jour / nuit : thème de l'interface, et nuit dans la vue 3D (ciel étoilé, clair de lune, spots, lanternes et fenêtres allumés). */
+function appliquerNuit(sauver) {
+  document.documentElement.dataset.theme = nuit ? "dark" : "light";
+  const b = $("jour-nuit"); b.setAttribute("aria-pressed", String(nuit)); b.setAttribute("aria-label", nuit ? "Passer en mode jour" : "Passer en mode nuit");
+  if (sauver) try { localStorage.setItem(CLE + ":theme", nuit ? "dark" : "light"); } catch {}
+  if (T) { eclairer3D(); sceneModifiee(); }
+}
+$("jour-nuit").addEventListener("click", () => { nuit = !nuit; appliquerNuit(true); toast(nuit ? "Mode nuit : dans la vue 3D, spots, lanternes et fenêtres s’allument." : "Mode jour."); });
 $("suivant").addEventListener("click", () => allerEtape(etape + 1));
 $("lieux").addEventListener("click", e => { const b = e.target.closest("[data-lieu]"); if (b) changerLieu(b.dataset.lieu); });
 $("lames").addEventListener("click", e => {
@@ -2866,6 +2879,7 @@ function maillage(centre) {
   return { bois, lamb, plots, bassin, traits, largeur: bb.umax - bb.umin, profondeur: bb.vmax - bb.vmin, h3, cx, cz, zmin: bb.vmin - cz };
 }
 let T = null, sale = false, boucle3D = false;
+appliquerNuit(false);
 function panneauErreur3D() { $("vue3d").innerHTML = '<p style="padding:90px 24px 0;text-align:center;color:#16201B">La vue 3D ne peut pas se charger ici.</p>'; }
 /* Vue Photo : le sol calepiné (et au choix les meubles du plan) incrusté en perspective sur une photo de la pièce.
    Quatre repères glissables = les quatre coins de la boîte englobante du plan ; une homographie fait le reste. */
@@ -2984,11 +2998,17 @@ async function changerVue(v) {
 }
 const teinte = c => new THREE.Color(c).convertSRGBToLinear();
 /* Carte d'environnement procédurale (ciel + soleil, ou plafond éclairé) : donne les reflets du grès cérame, le satiné du bois et du composite. */
-function environnement(r, interieur) {
+function environnement(r, interieur, nuit) {
   const W = 512, H = 256, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"), im = g.createImageData(W, H), d = im.data, sun = new THREE.Vector3(-8, 10, 9).normalize();
   for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
     const u = i / W, v = 1 - j / H, phi = (v - 0.5) * Math.PI, th = (u - 0.5) * 2 * Math.PI, dx = Math.cos(phi) * Math.cos(th), dz = Math.cos(phi) * Math.sin(th), dy = Math.sin(phi); let R, G, B;
-    if (interieur) { const t = clamp((dy + 0.25) / 1.25, 0, 1), k = Math.exp(-(dx * dx + dz * dz) * 16) * Math.max(0, dy); R = 70 + 185 * t + 150 * k; G = 66 + 180 * t + 140 * k; B = 60 + 168 * t + 110 * k; }
+    if (interieur && nuit) { const t = clamp((dy + 0.25) / 1.25, 0, 1), k = Math.exp(-(dx * dx + dz * dz) * 10) * Math.max(0, dy); R = 18 + 40 * t + 230 * k; G = 16 + 34 * t + 190 * k; B = 14 + 28 * t + 120 * k; }
+    else if (interieur) { const t = clamp((dy + 0.25) / 1.25, 0, 1), k = Math.exp(-(dx * dx + dz * dz) * 16) * Math.max(0, dy); R = 70 + 185 * t + 150 * k; G = 66 + 180 * t + 140 * k; B = 60 + 168 * t + 110 * k; }
+    else if (nuit) {
+      if (dy >= 0) { const s2 = (1 - dy) * (1 - dy); R = 8 + 22 * s2; G = 12 + 30 * s2; B = 30 + 48 * s2; } else { const q = clamp(-dy * 2.5, 0, 1); R = 26 - 18 * q; G = 30 - 22 * q; B = 34 - 26 * q; }
+      const lune = new THREE.Vector3(6, 7, -8).normalize(), cosA = dx * lune.x + dy * lune.y + dz * lune.z, halo = Math.exp((cosA - 1) * 30) * 40, k = Math.exp(Math.max(0, cosA - 0.994) * 600) - 1;
+      R += halo + k * 20; G += halo + k * 20; B += halo * 1.1 + k * 20;
+    }
     else {
       if (dy >= 0) { const s2 = (1 - dy) * (1 - dy); R = 95 + 65 * s2; G = 150 + 45 * s2; B = 215; } else { const q = clamp(-dy * 2.5, 0, 1); R = 150 - 80 * q; G = 170 - 75 * q; B = 150 - 95 * q; }
       const cosA = dx * sun.x + dy * sun.y + dz * sun.z, halo = Math.exp((cosA - 1) * 12) * 60, k = Math.exp(Math.max(0, cosA - 0.985) * 400) - 1;
@@ -3008,8 +3028,12 @@ function initialiser3D() {
   const s = new THREE.Scene(), ciel = document.createElement("canvas"); ciel.width = 16; ciel.height = 256;
   const gc = ciel.getContext("2d"), dg = gc.createLinearGradient(0, 0, 0, 256); dg.addColorStop(0, "#8FC1E3"); dg.addColorStop(0.62, "#DCEBF2"); dg.addColorStop(0.75, "#EEF3EA"); gc.fillStyle = dg; gc.fillRect(0, 0, 16, 256);
   const tc = new THREE.CanvasTexture(ciel); tc.encoding = THREE.sRGBEncoding;
+  // Ciel de nuit : dégradé bleu profond et quelques étoiles.
+  const cielN = document.createElement("canvas"); cielN.width = 1024; cielN.height = 256; const gn = cielN.getContext("2d"), dn = gn.createLinearGradient(0, 0, 0, 256); dn.addColorStop(0, "#060A18"); dn.addColorStop(0.6, "#141F3A"); dn.addColorStop(0.75, "#22304D"); gn.fillStyle = dn; gn.fillRect(0, 0, 1024, 256);
+  { const re = hasard(42); for (let i = 0; i < 220; i++) { const x = re() * 1024, y = re() * re() * 150, t = re(); gn.fillStyle = `rgba(255,255,${t < 0.3 ? 220 : 255},${0.35 + re() * 0.65})`; gn.fillRect(x, y, t < 0.15 ? 2 : 1, t < 0.15 ? 2 : 1); } }
+  const tcNuit = new THREE.CanvasTexture(cielN); tcNuit.encoding = THREE.sRGBEncoding;
   const brume = new THREE.Fog(0xE3EEF2, 26, 85);
-  s.add(new THREE.HemisphereLight(0xDDEEFF, 0x5A6A40, 0.32));
+  const hemi = new THREE.HemisphereLight(0xDDEEFF, 0x5A6A40, 0.32); s.add(hemi);
   const sol = new THREE.DirectionalLight(0xFFF1D8, 1.25); sol.position.set(-8, 10, 9); sol.castShadow = true; sol.shadow.mapSize.set(4096, 4096); sol.shadow.bias = -0.0003; sol.shadow.normalBias = 0.01; sol.shadow.radius = 3; s.add(sol); s.add(sol.target);
   const herbe = document.createElement("canvas"); herbe.width = herbe.height = 512;
   const gh = herbe.getContext("2d"), ra = hasard(99); gh.fillStyle = "#587A3A"; gh.fillRect(0, 0, 512, 512);
@@ -3018,7 +3042,8 @@ function initialiser3D() {
   const pelouse = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ map: th, roughness: 1 })); pelouse.receiveShadow = true; s.add(pelouse);
   const groupe = new THREE.Group(); s.add(groupe);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 220);
-  T = { r, s, sol, groupe, camera, pelouse, tc, brume, theta: -0.5, phi: 1.27, rayon: 12, cible: new THREE.Vector3(0, 0.5, 0), hote, cle: "", envExt: environnement(r, false), envInt: environnement(r, true) };
+  T = { r, s, sol, hemi, groupe, camera, pelouse, tc, tcNuit, brume, theta: -0.5, phi: 1.27, rayon: 12, cible: new THREE.Vector3(0, 0.5, 0), hote, cle: "", nbLum: 0, envExt: environnement(r, false), envInt: environnement(r, true), envExtNuit: environnement(r, false, true), envIntNuit: environnement(r, true, true) };
+  eclairer3D();
   T.resize = () => { const l = hote.clientWidth || 1, h = hote.clientHeight || 1; r.setSize(l, h, false); camera.aspect = l / h; camera.updateProjectionMatrix(); rendu3D(); };
   const p3 = new Map(); let d0 = 0, r0 = 0;
   hote.addEventListener("pointerdown", e => { hote.setPointerCapture(e.pointerId); p3.set(e.pointerId, [e.clientX, e.clientY]); if (p3.size === 2) { const [a, b] = [...p3.values()]; d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); r0 = T.rayon; } });
@@ -3033,6 +3058,14 @@ function initialiser3D() {
   T.resize();
 }
 function sceneModifiee() { if (T) { sale = true; rendu3D(); } }
+function eclairer3D() {
+  const n = nuit, dedans = !ext();
+  T.sol.color.set(n ? 0x9FB4D8 : 0xFFF1D8); T.sol.intensity = n ? (dedans ? 0.06 : 0.22) : 1.25; T.sol.position.set(n ? 6 : -8, n ? 7 : 10, n ? -8 : 9);
+  T.hemi.color.set(n ? 0x24324F : 0xDDEEFF); T.hemi.groundColor.set(n ? 0x0B0E0A : 0x5A6A40); T.hemi.intensity = n ? (dedans ? 0.1 : 0.22) : 0.32;
+  T.r.toneMappingExposure = n ? (dedans ? 0.95 : 1.05) : 0.84; T.brume.color.set(n ? 0x0B1222 : 0xE3EEF2);
+}
+// Source lumineuse ponctuelle de nuit (spots, lanternes, fenêtres, lampes) ; plafonnée pour garder un rendu fluide.
+function lumiere(couleur, intensite, portee) { if (!nuit || T.nbLum >= 28) return null; T.nbLum++; const l = new THREE.PointLight(couleur, intensite, portee, 2); return l; }
 const geo = g => { const b = new THREE.BufferGeometry(); b.setAttribute("position", new THREE.Float32BufferAttribute(g.pos, 3)); b.setAttribute("normal", new THREE.Float32BufferAttribute(g.nor, 3)); b.setAttribute("uv", new THREE.Float32BufferAttribute(g.uv, 2)); b.setIndex(g.idx); return b; };
 function vider(gr) { while (gr.children.length) { const o = gr.children[0]; gr.remove(o); o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) (Array.isArray(x.material) ? x.material : [x.material]).forEach(q => q.dispose()); }); } }
 function decorReel(m, t, groupe) {
@@ -3102,7 +3135,7 @@ function forme3D(o, d, L, P, H, B, C, M, chaise, cadre, coussin, g) {
     case "baignoire": B(L, H, P, 0, H / 2, 0, c); B(L - 0.16, 0.02, P - 0.16, 0, H + 0.005, 0, M(0xBFDDE6, 0.2)); break;
     case "douche": B(L, H, P, 0, H / 2, 0, c); { const v = B(0.01, 2, P, L / 2, 1 + H, 0, new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.05, transparent: true, opacity: 0.35 })); v.castShadow = false; } break;
     case "tapis": { const b = B(L, 0.012, P, 0, 0.006, 0, M(hex, 1)); b.castShadow = false; } break;
-    case "lampe": C(0.15, 0.15, 0.02, 0.01, cadre); C(0.015, 0.015, H - 0.3, (H - 0.3) / 2, cadre); if (t === "lampadaire") C(0.17, 0.2, 0.26, H - 0.15, M(hex, 0.9)); else for (let i = 0; i < 4; i++) { const k = C(0.015, 0.015, 0.25, H - 0.12, cadre); k.rotation.z = 0.8; k.rotation.y = i * Math.PI / 2; } break;
+    case "lampe": C(0.15, 0.15, 0.02, 0.01, cadre); C(0.015, 0.015, H - 0.3, (H - 0.3) / 2, cadre); if (t === "lampadaire") { const ab = C(0.17, 0.2, 0.26, H - 0.15, M(hex, 0.9)); if (nuit) { ab.material.emissive = teinte(0xFFE2B0); ab.material.emissiveIntensity = 1.3; const l = lumiere(0xFFE0B0, 1, 4.5); if (l) { l.position.y = H - 0.15; g.add(l); } } } else for (let i = 0; i < 4; i++) { const k = C(0.015, 0.015, 0.25, H - 0.12, cadre); k.rotation.z = 0.8; k.rotation.y = i * Math.PI / 2; } break;
     case "plante": C(L / 2 * 0.7, L / 2 * 0.6, 0.45, 0.22, M(0x6F5B4A)); { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(L / 2, 1), M(hex, 1)); f.position.y = H - L / 2; f.castShadow = true; g.add(f); } break;
     case "pianodroit": B(L, H, P, 0, H / 2, 0, c); B(L - 0.1, 0.03, 0.15, 0, 0.75, P / 2 + 0.02, M(0xF2F2EE, 0.6)); B(L - 0.1, 0.06, 0.2, 0, 0.72, P / 2 + 0.05, c); break;
     case "radiateur": B(L, H, P, 0, 0.15 + H / 2, 0, c); break;
@@ -3152,7 +3185,7 @@ function objetElement(o, m) {
       else if (st === "bio") { const n = Math.max(4, Math.round(L / 0.2)); for (let i = 0; i < n; i++) { const lame = B(0.19, 0.012, P - 2 * e, -L / 2 + L * (i + 0.5) / n, H + 0.05, 0, cm); lame.rotation.z = 0.6; } }
       else { const tm = new THREE.MeshStandardMaterial({ color: teinte(parseInt(coulToile(o).slice(1), 16)), roughness: 0.95, side: THREE.DoubleSide }); B(L - 2 * e, 0.012, P - 2 * e, 0, H - 0.04, 0, tm); const n = Math.max(2, Math.round(L / 0.5)); for (let i = 1; i < n; i++) B(0.03, 0.06, P - 2 * e, -L / 2 + e + (L - 2 * e) * i / n, H - 0.02, 0, tm); B(e / 2, 0.04, P - 2 * e, -L / 2 + e, H - 0.02, 0, cm); B(e / 2, 0.04, P - 2 * e, L / 2 - e, H - 0.02, 0, cm); }
     }
-    else if (t === "lanterne") { C(L / 2, L / 2, 0.06, 0.03, cadre); B(L * 0.7, H - 0.12, L * 0.7, 0, H / 2, 0, new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 0.8, transparent: true, opacity: 0.85 })); C(L / 2, L / 2, 0.04, H - 0.02, cadre); }
+    else if (t === "lanterne") { C(L / 2, L / 2, 0.06, 0.03, cadre); B(L * 0.7, H - 0.12, L * 0.7, 0, H / 2, 0, new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: nuit ? 2.5 : 0.5, transparent: true, opacity: 0.85 })); C(L / 2, L / 2, 0.04, H - 0.02, cadre); const l = lumiere(0xFFC97A, 1.1, 4.5); if (l) { l.position.y = H / 2; g.add(l); } }
     else if (t === "douche") { B(L, 0.08, P, 0, 0.04, 0, M(0x9A9A96)); C(0.04, 0.04, H, H / 2, M(0x9A9A96, 0.3), 10); C(0.12, 0.12, 0.03, H - 0.02, M(0xC9D3DA, 0.3)); }
     else if (t === "velo") { B(L, 0.05, P, 0, 0.1, 0, M(0x6B6F6C, 0.5)); for (let i = 0; i < 3; i++) { const x = -L / 2 + 0.3 + i * 0.6; for (const dz of [-0.5, 0.5]) { const r2 = C(0.33, 0.33, 0.03, 0.33, M(0x1E1F20, 0.5), 20); r2.rotation.z = Math.PI / 2; r2.position.set(x, 0.33, dz); } B(0.03, 0.4, 0.9, x, 0.55, 0, M(0x3A6BB0, 0.5)); } }
     else B(L, H, P, 0, H / 2, 0, M(d.coul));
@@ -3176,7 +3209,7 @@ function reconstruire3D() {
   const ex = ext(), formes = etat.pieces.map((_, i) => polyDe(i)), bG = boiteEnglobante(formes.flat()), centre = { x: (bG.umin + bG.umax) / 2, z: (bG.vmin + bG.vmax) / 2 };
   vider(T.groupe); T.occ = []; T.arbres = null;
   const reel = !!(ex && fond && fond.aerien);
-  T.pelouse.visible = ex && !reel; T.s.background = ex ? T.tc : teinte(0xE7E4DD); T.s.environment = ex ? T.envExt : T.envInt; T.s.fog = ex ? T.brume : null; T.brume.near = reel ? 90 : 26; T.brume.far = reel ? 240 : 85;
+  T.nbLum = 0; eclairer3D(); T.pelouse.visible = ex && !reel; T.s.background = ex ? (nuit ? T.tcNuit : T.tc) : teinte(nuit ? 0x1A1D22 : 0xE7E4DD); T.s.environment = ex ? (nuit ? T.envExtNuit : T.envExt) : (nuit ? T.envIntNuit : T.envInt); T.s.fog = ex ? T.brume : null; T.brume.near = reel ? 90 : 26; T.brume.far = reel ? 240 : 85;
   etat.pieces.forEach((_, i) => avecCal(i, c => construirePiece(c, maillage(centre), i, formes)));
   const taille = Math.max(bG.umax - bG.umin, bG.vmax - bG.vmin);
   const cle = `${etat.lieu}|${Math.round(taille * 2)}|${reel}`;
@@ -3192,7 +3225,7 @@ function construirePiece(c, m, ip, formes) {
   if (m.traits.length) { const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(m.traits, 3)); groupe.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x1A1410, transparent: true, opacity: p.pierre ? 0.2 : 0.34 }))); }
   ajoute(m.lamb, new THREE.MeshStandardMaterial({ color: teinte(0x6B5236), roughness: 0.9 }), !etat.habillage);
   ajoute(m.plots, new THREE.MeshStandardMaterial({ color: teinte(0x1A1C1D), roughness: 0.7 }), !etat.habillage);
-  ajoute(m.bassin, new THREE.MeshStandardMaterial({ color: teinte(0xBFDDE6), roughness: 0.5 }), false);
+  ajoute(m.bassin, new THREE.MeshStandardMaterial({ color: teinte(0xBFDDE6), roughness: 0.5, emissive: teinte(nuit ? 0x1F6F8F : 0x000000), emissiveIntensity: 0.7 }), false);
   for (const o of etat.elements) groupe.add(objetElement(o, m));
   if (ex) {
     const X = [-70, 70], pos = [], uv = [];
@@ -3203,13 +3236,14 @@ function construirePiece(c, m, ip, formes) {
     if (reel) decorReel(m, t, groupe);
     // Une façade par bord qui porte une ouverture (la maison peut border la terrasse sur plusieurs côtés) ; sans ouverture, une façade par défaut au nord.
     const bordsMaison = [...new Set(ouvs.map(o => o.a.i))]; if (!ouvs.length && !reel) bordsMaison.push(-1);
-    const murM = new THREE.MeshStandardMaterial({ color: teinte(0xEDE9E0), roughness: 0.95 }), cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
+    const murM = new THREE.MeshStandardMaterial({ color: teinte(nuit ? 0x9C988F : 0xEDE9E0), roughness: 0.95 }), cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
     bordsMaison.forEach((bi, k) => {
       const b = bi >= 0 ? bords()[bi] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
       const grp = new THREE.Group(); grp.position.set(mx, 0, mz); grp.rotation.y = -ang; groupe.add(grp);
       const large = (b ? Math.max(b.len, bordsMaison.length > 1 ? 0 : m.largeur) : m.largeur) + (reel ? 0 : bordsMaison.length > 1 ? 1 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2;
       const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5; let occ = null;
       const cadreF = cadreM.clone(), vitreF = vitreM.clone(), boisF = boisM.clone(), murF = murM.clone(); [cadreF, vitreF, boisF, murF].forEach(q => { q.transparent = true; });
+      if (nuit) { vitreF.emissive = teinte(0xFFD9A0); vitreF.emissiveIntensity = 1.1; vitreF.opacity = 0.9; }
       if (!reel || !fond.bat.length) {
         const matMur = murM.clone(), matToit = new THREE.MeshStandardMaterial({ color: teinte(0x3B4144), roughness: 0.8, transparent: true }); matMur.transparent = true;
         const mur = new THREE.Mesh(new THREE.BoxGeometry(large, hautMur, ep), matMur); mur.position.set(0, yMur, zc); mur.castShadow = mur.receiveShadow = true; grp.add(mur); const toit = new THREE.Mesh(new THREE.BoxGeometry(large + 0.5, 0.22, 1.1), matToit); toit.position.set(0, base + 3.1, zc + 0.35); toit.castShadow = true; grp.add(toit);
@@ -3219,7 +3253,8 @@ function construirePiece(c, m, ip, formes) {
       if (!ouvs.length) {
         const bl = Math.min(3.2, m.largeur * 0.6);
         const fen = new THREE.Mesh(new THREE.BoxGeometry(bl + 0.14, 2.25, 0.02), new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.6 })); fen.position.set(0, base + 1.14, zc + ep / 2 + 0.005); grp.add(fen);
-        const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(0x24333C), roughness: 0.15, metalness: 0.5 })); baie.position.set(0, base + 1.12, zc + ep / 2 + 0.02); grp.add(baie);
+        const baie = new THREE.Mesh(new THREE.BoxGeometry(bl, 2.15, 0.03), new THREE.MeshStandardMaterial({ color: teinte(nuit ? 0xFFE2B0 : 0x24333C), roughness: 0.15, metalness: nuit ? 0 : 0.5, emissive: teinte(nuit ? 0xFFD9A0 : 0x000000), emissiveIntensity: 1 })); baie.position.set(0, base + 1.12, zc + ep / 2 + 0.02); grp.add(baie);
+        const lb = lumiere(0xFFD9A0, 0.7, 5); if (lb) { lb.position.set(0, base + 1.3, zc + ep / 2 + 0.6); grp.add(lb); }
       }
       for (const { a, d } of ouvs.filter(o => o.a.i === bi)) {
         const sx = (a.cx - m.cx - mx) * Math.cos(ang) + (a.cy - m.cz - mz) * Math.sin(ang), y0 = m.h3 + (d.sol || 0) + 0.03, zf = zc + ep / 2, nv = d.vantaux || 1;
@@ -3228,11 +3263,12 @@ function construirePiece(c, m, ip, formes) {
         if (d.pleine) B(a.l - 0.04, d.h - 0.04, 0.05, sx, y0 + d.h / 2, zf + 0.025, boisF);
         else for (let k = 0; k < nv; k++) { const w = a.l / nv, x = sx - a.l / 2 + w * (k + 0.5), zk = zf + 0.03 + (d.battant || nv === 1 ? 0 : k * 0.035); B(w - 0.02, d.h - 0.02, 0.04, x, y0 + d.h / 2, zk, cadreF); B(w - 0.12, d.h - 0.12, 0.012, x, y0 + d.h / 2, zk + 0.016, vitreF); }
         if (d.sol) B(a.l + 0.16, 0.05, 0.12, sx, y0 - 0.03, zf + 0.04, murF);
+        if (!d.pleine) { const lo = lumiere(0xFFD9A0, 0.6, 4.5); if (lo) { lo.position.set(sx, y0 + d.h * 0.6, zf + 0.5); grp.add(lo); } }
       }
       if (occ) occ.mats.push(cadreF, vitreF, boisF, murF);
       if (k === 0 && bordsMaison.length === 1 && !reel && etat.pente <= 2) for (const s of [-1, 1]) { const hg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.4, 30), new THREE.MeshStandardMaterial({ color: teinte(0x35522B), roughness: 1 })); hg.position.set(s * (m.largeur / 2 + 5.4), 0.5, zc + 15); hg.castShadow = true; grp.add(hg); }
     });
-    if (etat.spots) { const sm = new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: 1 }); for (const q of pointsSpots()) { const o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16), sm); o.position.set(q.x - m.cx, m.h3 + 0.004, q.y - m.cz); groupe.add(o); } }
+    if (etat.spots) { const sm = new THREE.MeshStandardMaterial({ color: teinte(0xFFE9A8), emissive: teinte(0xFFD27A), emissiveIntensity: nuit ? 3 : 0.4 }); for (const q of pointsSpots()) { const o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16), sm); o.position.set(q.x - m.cx, m.h3 + 0.004, q.y - m.cz); groupe.add(o); const l = lumiere(0xFFD9A0, 0.9, 2.8); if (l) { l.position.set(q.x - m.cx, m.h3 + 0.06, q.y - m.cz); groupe.add(l); } } }
   } else {
     const contourDalle = pts => { const f = new THREE.Shape(); pts.forEach((q, i) => { const x = q.x - m.cx, y = -(q.y - m.cz); if (i) f.lineTo(x, y); else f.moveTo(x, y); }); return f; }, forme = contourDalle(etat.poly);
     const socle = new THREE.Mesh(new THREE.ShapeGeometry(contourDalle(decaler(etat.poly, -0.16))), new THREE.MeshStandardMaterial({ color: teinte(0x30342F), roughness: 0.9 })); socle.rotation.x = -Math.PI / 2; socle.position.y = 0.0001; groupe.add(socle);
@@ -3253,9 +3289,11 @@ function construirePiece(c, m, ip, formes) {
       if (x < b.len - 0.001) paroi(murs, P(x), P(b.len), 0, 2.5, 0, n);
       if (etat.plinthes) { for (const o of ouvs) { if (o.y0 > 0.05) continue; if (o.d0 > y + 0.001) paroi(pl, P(y), P(o.d0), 0.001, 0.07, 0.012, n); y = Math.max(y, o.d1); } if (y < b.len - 0.001) paroi(pl, P(y), P(b.len), 0.001, 0.07, 0.012, n); }
     }
-    ajoute(murs, new THREE.MeshStandardMaterial({ color: teinte(0xF2EFE9), roughness: 0.95, emissive: teinte(0x4A4743) }), false);
+    ajoute(murs, new THREE.MeshStandardMaterial({ color: teinte(nuit ? 0xBDB7AD : 0xF2EFE9), roughness: 0.95, emissive: teinte(nuit ? 0x141210 : 0x4A4743) }), false);
+    // Suspension allumée au centre de la pièce la nuit.
+    if (nuit) { const bbp = boiteEnglobante(etat.poly), lp = lumiere(0xFFE4C0, 0.85, 11); if (lp) { lp.position.set((bbp.umin + bbp.umax) / 2 - m.cx, 2.2, (bbp.vmin + bbp.vmax) / 2 - m.cz); groupe.add(lp); const amp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshStandardMaterial({ color: teinte(0xFFF3DC), emissive: teinte(0xFFE4C0), emissiveIntensity: 2 })); amp.position.copy(lp.position); groupe.add(amp); const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.3, 6), new THREE.MeshStandardMaterial({ color: teinte(0x222222) })); fil.position.set(lp.position.x, 2.35, lp.position.z); groupe.add(fil); } }
     ajoute(pl, new THREE.MeshStandardMaterial({ color: teinte(0xFFFFFF), roughness: 0.6 }), false);
-    const chambranleM = new THREE.MeshStandardMaterial({ color: teinte(0xF7F5F0), roughness: 0.5 }), boisP = new THREE.MeshStandardMaterial({ color: teinte(0xB9A58B), roughness: 0.65 }), boisP2 = new THREE.MeshStandardMaterial({ color: teinte(0xC9B79C), roughness: 0.65 }), chromeM = new THREE.MeshStandardMaterial({ color: teinte(0xC9CDD0), roughness: 0.25, metalness: 0.8 }), vitreI = new THREE.MeshStandardMaterial({ color: teinte(0xBFDCE8), roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.4, emissive: teinte(0x5B7682), emissiveIntensity: 0.6 }), appuiM = new THREE.MeshStandardMaterial({ color: teinte(0xD9D4CC), roughness: 0.6 });
+    const chambranleM = new THREE.MeshStandardMaterial({ color: teinte(0xF7F5F0), roughness: 0.5 }), boisP = new THREE.MeshStandardMaterial({ color: teinte(0xB9A58B), roughness: 0.65 }), boisP2 = new THREE.MeshStandardMaterial({ color: teinte(0xC9B79C), roughness: 0.65 }), chromeM = new THREE.MeshStandardMaterial({ color: teinte(0xC9CDD0), roughness: 0.25, metalness: 0.8 }), vitreI = new THREE.MeshStandardMaterial({ color: teinte(nuit ? 0x16233A : 0xBFDCE8), roughness: 0.05, metalness: 0.1, transparent: true, opacity: nuit ? 0.85 : 0.4, emissive: teinte(nuit ? 0x0E1830 : 0x5B7682), emissiveIntensity: 0.6 }), appuiM = new THREE.MeshStandardMaterial({ color: teinte(0xD9D4CC), roughness: 0.6 });
     const s0 = aireSignee(etat.poly) > 0 ? 0 : Math.PI;
     for (const o of etat.ouvertures) {
       const a = ancrage(o), d = gab(o.type), l = a.l, h = d.y1 - d.y0, y0 = d.y0, grp = new THREE.Group(); grp.position.set(a.cx - m.cx, 0, a.cy - m.cz); grp.rotation.y = -(Math.atan2(a.uy, a.ux) + s0); groupe.add(grp);
