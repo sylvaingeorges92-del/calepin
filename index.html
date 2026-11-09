@@ -1371,15 +1371,30 @@ function dessinerFond() {
   }
   ctx.save(); ctx.translate(mod(cam.ox, 256) - 256, mod(cam.oy, 256) - 256);
   ctx.fillStyle = motifHerbe(ctx); ctx.fillRect(0, 0, LP + 512, HP + 512); ctx.restore();
-  const bb = boiteEnglobante(etat.poly), g = ecran({ x: bb.umin, y: bb.vmin }), dr = ecran({ x: bb.umax, y: bb.vmin });
-  const a = { x: g.x - 70, y: g.y - 200 }, b = { x: dr.x + 70, y: g.y - 52 }, mid = (a.x + b.x) / 2;
-  ctx.save(); ctx.shadowColor = "rgba(20,30,20,.45)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 10; ctx.fillStyle = "#A9604A"; ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y); ctx.restore();
-  ctx.fillStyle = "#B4694F"; ctx.fillRect(a.x, a.y, b.x - a.x, (b.y - a.y) * 0.5);
-  ctx.strokeStyle = "rgba(60,25,15,.2)"; ctx.lineWidth = 1;
-  for (let y = a.y; y < b.y; y += 8) { ctx.beginPath(); ctx.moveTo(a.x, y); ctx.lineTo(b.x, y); ctx.stroke(); }
-  ctx.fillStyle = "#EFE9DF"; ctx.fillRect(a.x, b.y - 8, b.x - a.x, 8);
+  // Maison d'exemple, à l'échelle et collée à la terrasse : une façade le long de chaque bord qui porte une ouverture, sinon le long du bord haut.
+  const bordsM = [...new Set(etat.ouvertures.map(o => ancrage(o).i))], bb = boiteEnglobante(etat.poly);
+  const faces = bordsM.length ? bordsM.map(i => { const b = bords()[i]; return { ux: b.ux, uy: b.uy, nx: b.nx, ny: b.ny, cx: (b.A.x + b.B.x) / 2, cy: (b.A.y + b.B.y) / 2, len: b.len, mur: false }; })
+    : [{ ux: 1, uy: 0, nx: 0, ny: -1, cx: (bb.umin + bb.umax) / 2, cy: bb.vmin, len: bb.umax - bb.umin, mur: true }];
+  const prof = 2.6, etiquettes = [];
+  for (const f of faces) {
+    const deb = faces.length > 1 ? 0.3 : 1.6, x0 = -f.len / 2 - deb, w = f.len + 2 * deb, y0 = EP_MUR; // le mur lui-même est dessiné par dessinerOuvertures quand une ouverture existe
+    ctx.save(); transformBord(f);
+    ctx.save(); ctx.shadowColor = "rgba(20,30,20,.45)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 10; ctx.fillStyle = "#A9604A"; ctx.fillRect(x0, y0, w, prof); ctx.restore();
+    ctx.fillStyle = "#B4694F"; ctx.fillRect(x0, y0, w, prof * 0.5);
+    ctx.strokeStyle = "rgba(60,25,15,.2)"; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
+    for (let y = y0; y < y0 + prof; y += 0.11) { ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); }
+    ctx.stroke();
+    if (f.mur) {
+      ctx.fillStyle = "#EDE9E0"; ctx.fillRect(x0, 0.01, w, EP_MUR);
+      ctx.fillStyle = "rgba(0,0,0,.08)"; for (let x = x0; x < x0 + w; x += 0.5) ctx.fillRect(x, 0.01, 0.25, EP_MUR);
+      ctx.lineWidth = 1.6 / cam.z; ctx.strokeStyle = "#16201B"; ctx.strokeRect(x0, 0.01, w, EP_MUR);
+    }
+    ctx.restore();
+    etiquettes.push(ecran({ x: f.cx + f.nx * (y0 + prof / 2), y: f.cy + f.ny * (y0 + prof / 2) }));
+  }
   ctx.font = "700 13px " + getComputedStyle(document.body).fontFamily; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const m = ctx.measureText("Maison").width; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(mid - m / 2 - 8, (a.y + b.y) / 2 - 12, m + 16, 24); ctx.fillStyle = "#3A2A22"; ctx.fillText("Maison", mid, (a.y + b.y) / 2);
+  const m = ctx.measureText("Maison").width;
+  for (const e of etiquettes) { if (e.x < 40 || e.x > LP - 40 || e.y < 70 || e.y > HP - 20) continue; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(e.x - m / 2 - 8, e.y - 12, m + 16, 24); ctx.fillStyle = "#3A2A22"; ctx.fillText("Maison", e.x, e.y); }
 }
 function repereLocal() { const c = calepin, z = cam.z; ctx.transform(c.co * z, c.si * z, -c.si * z, c.co * z, cam.ox, cam.oy); }
 function dessinerLames(alpha, base) {
@@ -3238,9 +3253,9 @@ function construirePiece(c, m, ip, formes) {
     const bordsMaison = [...new Set(ouvs.map(o => o.a.i))]; if (!ouvs.length && !reel) bordsMaison.push(-1);
     const murM = new THREE.MeshStandardMaterial({ color: teinte(nuit ? 0x9C988F : 0xEDE9E0), roughness: 0.95 }), cadreM = new THREE.MeshStandardMaterial({ color: teinte(0x33383A), roughness: 0.55 }), vitreM = new THREE.MeshStandardMaterial({ color: teinte(0x8FB8CC), roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.55 }), boisM = new THREE.MeshStandardMaterial({ color: teinte(0x8C6A48), roughness: 0.7 });
     bordsMaison.forEach((bi, k) => {
-      const b = bi >= 0 ? bords()[bi] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin - 0.32, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
+      const b = bi >= 0 ? bords()[bi] : null, mx = b ? (b.A.x + b.B.x) / 2 - m.cx : 0, mz = b ? (b.A.y + b.B.y) / 2 - m.cz : m.zmin, ang = b ? Math.atan2(b.uy, b.ux) + (aireSignee(etat.poly) > 0 ? 0 : Math.PI) : 0;
       const grp = new THREE.Group(); grp.position.set(mx, 0, mz); grp.rotation.y = -ang; groupe.add(grp);
-      const large = (b ? Math.max(b.len, bordsMaison.length > 1 ? 0 : m.largeur) : m.largeur) + (reel ? 0 : bordsMaison.length > 1 ? 1 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = b ? -(0.02 + ep / 2) : -0.32 + 0.2;
+      const large = (b ? Math.max(b.len, bordsMaison.length > 1 ? 0 : m.largeur) : m.largeur) + (reel ? 0 : bordsMaison.length > 1 ? 1 : 10), base = etat.hauteur / 100 - 0.15, ep = 0.4, zc = -(0.02 + ep / 2);
       const hautMur = reel ? 3.1 : 9, yMur = reel ? base + hautMur / 2 - 0.3 : base - 1.5; let occ = null;
       const cadreF = cadreM.clone(), vitreF = vitreM.clone(), boisF = boisM.clone(), murF = murM.clone(); [cadreF, vitreF, boisF, murF].forEach(q => { q.transparent = true; });
       if (nuit) { vitreF.emissive = teinte(0xFFD9A0); vitreF.emissiveIntensity = 1.1; vitreF.opacity = 0.9; }
