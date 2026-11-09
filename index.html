@@ -667,7 +667,15 @@ const CATALOGUE = [
   { id: "c80", lieu: "interieur", fam: "carrelage", nom: "Grès cérame 80 × 80", L: 800, l: 800, e: 10, j: 3, n: 3, base: "#BFBAB0", veine: "#8C877D", pierre: 1 },
   { id: "c120", lieu: "interieur", fam: "carrelage", nom: "Grand format 120 × 60", L: 1200, l: 600, e: 10, j: 3, n: 2, base: "#8E8E8C", veine: "#6A6A68", pierre: 1 },
   { id: "c30", lieu: "interieur", fam: "carrelage", nom: "Carreau 30 × 30", L: 300, l: 300, e: 8, j: 3, n: 11, base: "#E7E1D6", veine: "#B9B1A2", pierre: 1 },
-  { id: "imit", lieu: "interieur", fam: "carrelage", nom: "Imitation parquet 120 × 20", L: 1200, l: 200, e: 10, j: 2, n: 5, base: "#B48F66", veine: "#7E5C3C" }
+  { id: "imit", lieu: "interieur", fam: "carrelage", nom: "Imitation parquet 120 × 20", L: 1200, l: 200, e: 10, j: 2, n: 5, base: "#B48F66", veine: "#7E5C3C" },
+  // Formes : L et l prennent le sens indiqué par FORMES_CARREAU (entre plats, côté, cabochon…)
+  { id: "hexa", lieu: "interieur", fam: "carrelage", forme: "hexagone", nom: "Hexagone 20", L: 200, l: 231, e: 9, j: 3, n: 25, base: "#E9E4DA", veine: "#B8B0A2", pierre: 1 },
+  { id: "hexalong", lieu: "interieur", fam: "carrelage", forme: "hexalong", nom: "Hexagone allongé 10 × 20", L: 200, l: 100, e: 9, j: 2, n: 40, base: "#D4D9D6", veine: "#9EA6A2", pierre: 1 },
+  { id: "octo", lieu: "interieur", fam: "carrelage", forme: "octogone", nom: "Octogone 20 et cabochons", L: 200, l: 50, e: 9, j: 3, n: 25, base: "#EFEAE0", veine: "#C2B9A8", pierre: 1 },
+  { id: "losange", lieu: "interieur", fam: "carrelage", forme: "losange", nom: "Losange 15", L: 150, l: 150, e: 9, j: 2, n: 40, base: "#D8CFC3", veine: "#A89C8C", pierre: 1 },
+  { id: "triangle", lieu: "interieur", fam: "carrelage", forme: "triangle", nom: "Triangle 20", L: 200, l: 173, e: 9, j: 2, n: 40, base: "#E2DED6", veine: "#ABA59A", pierre: 1 },
+  { id: "trapeze", lieu: "interieur", fam: "carrelage", forme: "trapeze", nom: "Trapèze 20 / 10", L: 200, l: 100, e: 9, j: 2, n: 36, base: "#CFCBC3", veine: "#9A958B", pierre: 1 },
+  { id: "cube", lieu: "interieur", fam: "carrelage", forme: "cube", nom: "Cube 3D, losanges 15", L: 150, l: 150, e: 9, j: 2, n: 40, base: "#E6E2DA", veine: "#B2ACA2", pierre: 1 }
 ];
 const FORMES = {
   rectangle: [[0, 0], [6, 0], [6, 4], [0, 4]],
@@ -1108,6 +1116,87 @@ function piecesChevrons(loc, trous, Lm, w, motif, r) {
   }
   return pieces;
 }
+/* ---- Carreaux de forme : hexagones, octogones à cabochons, losanges, triangles, trapèzes, cubes 3D ----
+   Chaque forme est décrite par une maille (vecteurs A et B) et ses tuiles ; les tuiles sont posées bord à bord puis rentrées d'un demi-joint. */
+const FORMES_CARREAU = {
+  hexagone: { L: "Largeur entre plats (mm)", texte: d => `${d.L} mm entre plats` },
+  hexalong: { L: "Longueur pointe à pointe (mm)", l: "Largeur (mm)", texte: d => `${d.l} × ${d.L} mm` },
+  octogone: { L: "Largeur entre plats (mm)", l: "Côté du cabochon (mm)", texte: d => `${d.L} mm, cabochons ${d.l} mm` },
+  losange: { L: "Côté (mm)", texte: d => `côté ${d.L} mm, angles 60°` },
+  triangle: { L: "Côté (mm)", texte: d => `côté ${d.L} mm` },
+  trapeze: { L: "Grande base (mm)", l: "Petite base (mm)", texte: d => `${d.L} / ${d.l} mm` },
+  cube: { L: "Côté des losanges (mm)", texte: d => `losanges de ${d.L} mm, trois teintes` }
+};
+function prototuiles(forme, d, j) {
+  const R3 = Math.sqrt(3), P = (u, v) => ({ u, v });
+  if (forme === "hexagone" || forme === "hexalong") {
+    const a = (forme === "hexagone" ? d.L : d.l) / 1000 + j, Lt = forme === "hexagone" ? a * 2 / R3 : d.L / 1000 + j * 2 / R3, ap = Lt / 4;
+    return { A: [a, 0], B: [a / 2, 0.75 * Lt], tuiles: [{ poly: [P(0, -Lt / 2), P(a / 2, -Lt / 2 + ap), P(a / 2, Lt / 2 - ap), P(0, Lt / 2), P(-a / 2, Lt / 2 - ap), P(-a / 2, -Lt / 2 + ap)] }] };
+  }
+  if (forme === "octogone") {
+    const a = d.L / 1000 + j, t = Math.min(a * 0.45, (d.l / 1000 + j) / Math.SQRT2), h = a / 2;
+    return { A: [a, 0], B: [0, a], tuiles: [{ poly: [P(-h + t, -h), P(h - t, -h), P(h, -h + t), P(h, h - t), P(h - t, h), P(-h + t, h), P(-h, h - t), P(-h, -h + t)] }, { poly: [P(h + t, h), P(h, h + t), P(h - t, h), P(h, h - t)], ombre: 0.42, cab: true }] };
+  }
+  if (forme === "losange") { const s = d.L / 1000 + j, h = s * R3 / 2; return { A: [s, 0], B: [s / 2, h], tuiles: [{ poly: [P(0, 0), P(s, 0), P(1.5 * s, h), P(s / 2, h)] }] }; }
+  if (forme === "triangle") { const s = d.L / 1000 + j, h = s * R3 / 2; return { A: [s, 0], B: [s / 2, h], tuiles: [{ poly: [P(0, 0), P(s, 0), P(s / 2, h)] }, { poly: [P(s, 0), P(1.5 * s, h), P(s / 2, h)] }] }; }
+  if (forme === "trapeze") {
+    const L = d.L / 1000 + j, l = Math.min(d.l / 1000 + j, L * 0.9), e = (L - l) / 2, h = e * R3;
+    return { A: [L + l, 0], B: [(L + l) / 2, h], tuiles: [{ poly: [P(0, 0), P(L, 0), P(L - e, h), P(e, h)] }, { poly: [P(L, 0), P(L + l, 0), P(L + l + e, h), P(L - e, h)] }] };
+  }
+  if (forme === "cube") {
+    const s = d.L / 1000 + j, w = s * R3 / 2;
+    return { A: [2 * w, 0], B: [w, 1.5 * s], tuiles: [{ poly: [P(0, 0), P(-w, s / 2), P(0, s), P(w, s / 2)], ombre: 0, t: 0.9 }, { poly: [P(0, 0), P(-w, s / 2), P(-w, -s / 2), P(0, -s)], ombre: 0.2, t: 0.5 }, { poly: [P(0, 0), P(0, -s), P(w, -s / 2), P(w, s / 2)], ombre: 0.44, t: 0.1 }] };
+  }
+  return null;
+}
+// Polygone convexe rentré de d (bords déplacés vers l'intérieur).
+function rentrer(poly, d) {
+  const n = poly.length, cu = poly.reduce((s, q) => s + q.u, 0) / n, cv = poly.reduce((s, q) => s + q.v, 0) / n, L = [];
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; let nx = -(b.v - a.v), ny = b.u - a.u; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l; if (nx * (cu - a.u) + ny * (cv - a.v) < 0) { nx = -nx; ny = -ny; } L.push({ pu: a.u + nx * d, pv: a.v + ny * d, du: b.u - a.u, dv: b.v - a.v }); }
+  const out = [];
+  for (let i = 0; i < n; i++) { const p = L[(i + n - 1) % n], q = L[i], det = p.du * q.dv - p.dv * q.du; if (Math.abs(det) < 1e-12) { out.push({ u: q.pu, v: q.pv }); continue; } const t = ((q.pu - p.pu) * q.dv - (q.pv - p.pv) * q.du) / det; out.push({ u: p.pu + p.du * t, v: p.pv + p.dv * t }); }
+  return out;
+}
+function piecesPavage(loc, trous, forme, d, jeu, r) {
+  const def = prototuiles(forme, d, jeu), bb = boiteEnglobante(loc, "u", "v"), pieces = [], [A, B] = [def.A, def.B], det = A[0] * B[1] - A[1] * B[0];
+  const idx = (u, v) => ({ i: (u * B[1] - v * B[0]) / det, k: (A[0] * v - A[1] * u) / det });
+  const coins = [[bb.umin, bb.vmin], [bb.umax, bb.vmin], [bb.umin, bb.vmax], [bb.umax, bb.vmax]].map(([u, v]) => idx(u, v));
+  const i0 = Math.floor(Math.min(...coins.map(c => c.i))) - 2, i1 = Math.ceil(Math.max(...coins.map(c => c.i))) + 2, k0 = Math.floor(Math.min(...coins.map(c => c.k))) - 2, k1 = Math.ceil(Math.max(...coins.map(c => c.k))) + 2;
+  const tuiles = def.tuiles.map(t => ({ ...t, poly: rentrer(t.poly, jeu / 2), plein: Math.abs(aireUV(rentrer(t.poly, jeu / 2))) }));
+  pieces.aireTuile = tuiles.reduce((s, t) => s + t.plein, 0) / tuiles.length; pieces.aireMaille = Math.abs(det); pieces.parMaille = tuiles.filter(t => !t.cab).length; pieces.cabParMaille = tuiles.filter(t => t.cab).length;
+  for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
+    const ou = i * A[0] + k * B[0], ov = i * A[1] + k * B[1];
+    if (ou < bb.umin - 2 || ou > bb.umax + 2 || ov < bb.vmin - 2 || ov > bb.vmax + 2) continue;
+    for (const t of tuiles) {
+      const poly = t.poly.map(q => ({ u: q.u + ou, v: q.v + ov }));
+      if (poly.every(q => q.u < bb.umin) || poly.every(q => q.u > bb.umax) || poly.every(q => q.v < bb.vmin) || poly.every(q => q.v > bb.vmax)) continue;
+      let morceaux = [clipConvexe(loc, poly)].filter(m => m.length >= 3);
+      for (const ob of trous) morceaux = morceaux.flatMap(m => soustraire(m, ob));
+      morceaux = morceaux.filter(m => m.length >= 3 && Math.abs(aireUV(m)) > 1e-5);
+      const aire = morceaux.reduce((a, m) => a + Math.abs(aireUV(m)), 0); if (aire < 2e-4) continue;
+      const bt = boiteEnglobante(poly, "u", "v"), bm = boiteEnglobante(morceaux.flat(), "u", "v");
+      pieces.push({ morceaux, aire, cx: bt.umin, cy: bt.vmin, dx: 1, dy: 0, lg: bm.umax - bm.umin, h: bm.vmax - bm.vmin, lgPlein: bt.umax - bt.umin, ht: bt.vmax - bt.vmin, entier: aire >= 0.985 * t.plein, t: t.t ?? r(), ox: r(), oy: r(), ombre: t.ombre, cab: t.cab });
+    }
+  }
+  return pieces;
+}
+// Vignette du catalogue pour un carreau de forme : quelques carreaux posés, avec leurs joints.
+function vignetteForme(p) {
+  const d = dim(p), j = d.j / 1000, def = prototuiles(p.forme, d, j), c = document.createElement("canvas"); c.width = 192; c.height = 128; const g = c.getContext("2d"), tex = texture(p);
+  const ext = Math.max(Math.hypot(def.A[0], def.A[1]), Math.hypot(def.B[0], def.B[1]), 0.05), ppm = 192 / (3.2 * ext);
+  g.fillStyle = "#6E675E"; g.fillRect(0, 0, 192, 128); g.translate(96, 64);
+  for (let i = -6; i <= 6; i++) for (let k = -6; k <= 6; k++) {
+    const ou = i * def.A[0] + k * def.B[0], ov = i * def.A[1] + k * def.B[1];
+    for (const t of def.tuiles) {
+      const poly = rentrer(t.poly, j / 2).map(q => ({ x: (q.u + ou) * ppm, y: (q.v + ov) * ppm })), bx = Math.min(...poly.map(q => q.x)), by = Math.min(...poly.map(q => q.y)), bw = Math.max(...poly.map(q => q.x)) - bx, bh = Math.max(...poly.map(q => q.y)) - by;
+      if (bx > 100 || bx + bw < -100 || by > 70 || by + bh < -70) continue;
+      g.save(); g.beginPath(); poly.forEach((q, n) => n ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)); g.closePath(); g.clip();
+      g.drawImage(tex, mod(i * 7 + k * 3, 5) / 5 * (TW - 512), mod(i + k * 2, 4) / 4 * (TH - 256), 512, 256, bx, by, bw, bh);
+      if (t.ombre) { g.fillStyle = `rgba(0,0,0,${t.ombre})`; g.fillRect(bx, by, bw, bh); } g.restore();
+    }
+  }
+  return c.toDataURL("image/jpeg", 0.85);
+}
 function calepiner() {
   const p = produit(), d = dim(p), estExt = ext(), carrelage = p.fam === "carrelage";
   const Lm = d.L / 1000, w = d.l / 1000, jeu = d.j / 1000, pas = w + jeu, ep = d.e / 1000;
@@ -1122,9 +1211,9 @@ function calepiner() {
   const r = hasard(etat.graine * 131 + 3), rangs = [], module = Lm + jeu, mini = carrelage ? Lm / 3 : Math.min(0.3, Lm / 3);
   const e = estExt ? (p.entraxe || 0.5) : 0, mL = SECTION.l, grille0 = bbT.umin + mL / 2, k = estExt ? Math.max(2, Math.floor(Lm / e + EPS)) : 0;
   const baseU = carrelage ? origine(bb.umin, bb.umax, module, Lm, etat.depart) : bb.umin, phi = origine(bb.vmin, bb.vmax, pas, w, etat.depart);
-  const chev = !estExt && CHEVRONS.includes(etat.motif);
+  const pav = !estExt && carrelage && !!p.forme, chev = !estExt && !pav && CHEVRONS.includes(etat.motif);
   let n = 0, avant = -1, suivant = 0, phPrec = null;
-  if (!chev) for (let v = phi; v < bb.vmax - 0.003; v += pas, n++) {
+  if (!chev && !pav) for (let v = phi; v < bb.vmax - 0.003; v += pas, n++) {
     const v0 = Math.max(v, bb.vmin), v1 = Math.min(v + w, bb.vmax); if (v1 - v0 < 0.003) continue;
     const ints = unir([v0 + 0.0015, (v0 + v1) / 2, v1 - 0.0015].flatMap(y => croisementsT(contours, "u", "v", y))); if (!ints.length) continue;
     let s = 0, ph = 0;
@@ -1203,11 +1292,11 @@ function calepiner() {
       inset.forEach((a, i) => { const b = inset[(i + 1) % inset.length]; const du = Math.abs(b.u - a.u), dv = Math.abs(b.v - a.v); if (du > 0.03 && dv > 0.15 * Math.hypot(du, dv)) pose(a.u, a.v, b.u, b.v); });
     }
   }
-  const pieces45 = chev ? piecesChevrons(loc, trous, Lm, w, etat.motif, r) : null;
-  const longueurs = chev ? pieces45.map(pc => pc.lg) : rangs.flatMap(rg => rg.pieces.map(pc => pc.b - pc.a));
+  const pieces45 = chev ? piecesChevrons(loc, trous, Lm, w, etat.motif, r) : pav ? piecesPavage(loc, trous, p.forme, d, jeu, r) : null;
+  const longueurs = pieces45 ? pieces45.map(pc => pc.lg) : rangs.flatMap(rg => rg.pieces.map(pc => pc.b - pc.a));
   let croise = 0, entieres = 0;
   const coupes = new Map();
-  if (chev) for (const pc of pieces45) { if (pc.entier) { entieres++; continue; } const cle = `${Math.round(pc.lg * 100)}|${Math.round(pc.h * 100)}|${etat.motif === "hongrie" ? 1 : 0}`; coupes.set(cle, (coupes.get(cle) || 0) + 1); }
+  if (pieces45) for (const pc of pieces45) { if (pc.entier) { entieres++; continue; } const cle = `${Math.round(pc.lg * 100)}|${Math.round(pc.h * 100)}|${pav ? (pc.cab ? 3 : 1) : etat.motif === "hongrie" ? 1 : 0}`; coupes.set(cle, (coupes.get(cle) || 0) + 1); }
   for (const rg of rangs) for (const pc of rg.pieces) {
     if (estExt) croise += us.filter(u => u > pc.a - 0.04 && u < pc.b + 0.04).length;
     const h = pc.d - pc.c, plein = pc.aire >= 0.985 * (pc.b - pc.a) * h, oblique = pc.morceaux.some(f => f.some((q, i) => { const o = f[(i + 1) % f.length]; return Math.abs(q.u - o.u) > 0.003 && Math.abs(q.v - o.v) > 0.003; }));
@@ -1220,11 +1309,16 @@ function calepiner() {
   const marches = estExt ? etat.marches.map(marcheInfo) : [], lgMarches = [];
   for (const m of marches) for (let i = 0; i < m.nb * Math.ceil(m.g / pas); i++) lgMarches.push(m.l);
   let perimetre = 0; etat.poly.forEach((q, i) => { const t = etat.poly[(i + 1) % etat.poly.length]; perimetre += Math.hypot(t.x - q.x, t.y - q.y); });
-  const surface = Math.abs(aireSignee(etat.poly)), surfacePose = Math.abs(aireSignee(polyPose)), unite = Lm * w, marge = 1 + etat.marge / 100;
+  const surface = Math.abs(aireSignee(etat.poly)), surfacePose = Math.abs(aireSignee(polyPose)), unite = pav ? pieces45.aireTuile : Lm * w, marge = 1 + etat.marge / 100;
   let restes = [loc]; for (const ob of trous) restes = restes.flatMap(m => soustraire(m, ob));
   const surfaceNette = restes.reduce((s, m) => s + Math.abs(aireUV(m)), 0), deduit = Math.max(0, surfacePose - surfaceNette), surfaceUtile = surface - deduit;
-  const brut = chev ? entieres + Math.ceil((longueurs.length - entieres) * 0.6) : carrelage ? longueurs.length : emballer([...longueurs, ...lgMarches], Lm);
-  const nbPieces = Math.ceil(Math.max(brut, (surfaceNette + marches.reduce((s, m) => s + m.nb * m.g * m.l, 0)) / unite * (chev ? marge + 0.05 : marge)));
+  const brut = chev ? entieres + Math.ceil((longueurs.length - entieres) * 0.6) : pav ? entieres + Math.ceil((longueurs.length - entieres) * 0.7) : carrelage ? longueurs.length : emballer([...longueurs, ...lgMarches], Lm);
+  let nbPieces = Math.ceil(Math.max(brut, (surfaceNette + marches.reduce((s, m) => s + m.nb * m.g * m.l, 0)) / unite * (chev || pav ? marge + 0.05 : marge))), nbCab = 0;
+  if (pav) { // comptage par maille : carreaux principaux d'une part, cabochons d'autre part
+    const cellules = surfaceNette / pieces45.aireMaille, princ = pieces45.filter(pc => !pc.cab), ent = princ.filter(pc => pc.entier).length, brutP = ent + Math.ceil((princ.length - ent) * 0.7);
+    nbCab = pieces45.cabParMaille ? Math.ceil(cellules * pieces45.cabParMaille * (marge + 0.05)) : 0;
+    nbPieces = Math.ceil(Math.max(brutP, cellules * pieces45.parMaille * (marge + 0.05))) + nbCab;
+  }
   const t = terrain(), hT = etat.hauteur / 100, hs = etat.poly.map(q => hT - t.sol(q));
   const lots = etat.elements.filter(o => !ELEMENTS[o.type].decor && !ELEMENTS[o.type].meuble).map(o => {
     const el = ELEMENTS[o.type], x = { o, d: el };
@@ -1238,8 +1332,8 @@ function calepiner() {
   const mlPlinthes = estExt ? 0 : Math.max(0, perimetre - lgOuv - lgVoisines - etat.elements.reduce((s, o) => s + contactMur(o), 0) + etat.elements.filter(o => ELEMENTS[o.type].plinthe).reduce((s, o) => s + perimetreDe(contour(o)) - contactMur(o), 0));
   const bandes = BANDES.map(() => 0), mondePlots = plots.map(q => { const P = versMonde(q.u, q.v), hp = hT - t.sol(P) - ep - SECTION.h; let b = BANDES.findIndex(([a, f]) => hp >= a - 1e-6 && hp < f - 1e-6); if (b < 0) b = 0; bandes[b]++; return { ...P, hp, b }; });
   return {
-    p, d, estExt, carrelage, Lm, w, jeu, pas, ep, co, si, versLocal, versMonde, jeuMur, polyPose, loc, bb, rangs, pieces45, chev, us, lambourdes, plots, mondePlots, bandes,
-    perimetre, surface, surfacePose, surfaceNette, surfaceUtile, deduit, lots, marches, nbPieces, entieres, nbPosees: longueurs.length, coupes, nbRangs: rangs.length,
+    p, d, estExt, carrelage, Lm, w, jeu, pas, ep, co, si, versLocal, versMonde, jeuMur, polyPose, loc, bb, rangs, pieces45, chev, pav, us, lambourdes, plots, mondePlots, bandes,
+    perimetre, surface, surfacePose, surfaceNette, surfaceUtile, deduit, lots, marches, nbPieces, nbCab, entieres, nbPosees: longueurs.length, coupes, nbRangs: rangs.length,
     mlLames: longueurs.reduce((s, l) => s + l, 0), nbLamb: emballer(piecesL, 3), mlLamb: piecesL.reduce((s, l) => s + l, 0), nbPlots: plots.length,
     fixations: Math.ceil((p.fix === "vis" ? 2 : 1) * croise * 1.05), hMin: Math.min(...hs), hMax: Math.max(...hs), hs,
     premier: rangs.length ? rangs[0].v1 - rangs[0].v0 : 0, dernier: rangs.length ? rangs[rangs.length - 1].v1 - rangs[rangs.length - 1].v0 : 0, mlPlinthes
@@ -1409,7 +1503,7 @@ function dessinerLames(alpha, base) {
       ctx.translate(pc.cx, pc.cy); ctx.rotate(Math.atan2(pc.dy, pc.dx));
       const lgT = pc.lgPlein + pc.ht, sw = Math.min(TW, lgT * TH), sh = Math.max(8, Math.min(TH, pc.ht * TH)); // la lame peut déborder d'une largeur derrière l'origine (coupe à 45° dans l'autre sens)
       ctx.drawImage(tex, pc.ox * (TW - sw), pc.oy * (TH - sh), sw, sh, -pc.ht, 0, lgT, pc.ht);
-      ctx.fillStyle = pc.t < 0.34 ? "rgba(0,0,0,.10)" : pc.t < 0.67 ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.08)"; ctx.fillRect(-pc.ht, 0, lgT, pc.ht);
+      ctx.fillStyle = pc.ombre !== undefined ? (pc.ombre ? `rgba(0,0,0,${pc.ombre})` : "rgba(255,255,255,.12)") : pc.t < 0.34 ? "rgba(0,0,0,.10)" : pc.t < 0.67 ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.08)"; ctx.fillRect(-pc.ht, 0, lgT, pc.ht);
       ctx.restore();
     }
     ctx.globalAlpha = 1; ctx.lineWidth = 1 / z; ctx.strokeStyle = base ? "rgba(0,0,0,.14)" : c.carrelage ? "rgba(60,55,50,.55)" : "rgba(0,0,0,.42)";
@@ -2234,8 +2328,8 @@ function metre() {
     if (etat.spots) s.push(["Éclairage", [["Spots encastrés", fr(etat.spots)], ["Transformateur", "1"]]]);
     if (c.marches.length) s.push(["Marches", c.marches.flatMap((m, i) => { const li = Math.ceil(m.l / 0.5) + 1, lg = Math.hypot(m.H, m.course); return [[`Accès ${i + 1}, largeur ${ml(m.l)}`, `${m.nb} marche${m.nb > 1 ? "s" : ""}`, `Hauteur ${cm1(m.r)}, profondeur ${cm(m.g)}, dénivelé ${cm(m.H)}`], ["Limons", fr(li), `Longueur ${ml(lg)}`], ["Lames par marche", fr(Math.ceil(m.g / c.pas)), "Comptées dans le total des lames"]]; })]);
   } else {
-    const nomU = p.fam === "parquet" ? "lames" : "carreaux", paquets = Math.ceil(c.nbPieces / (d.n || 1));
-    s.push([p.fam === "parquet" ? "Revêtement" : "Carrelage", [[p.nom, `${fr(c.nbPieces)} ${nomU}`, `${d.L} × ${d.l} mm, marge ${etat.marge} %`], ["Boîtes", fr(paquets), `${d.n} ${nomU} par boîte`], ["Rangées", fr(c.nbRangs)], ["Entiers posés", fr(c.entieres)], ["Pièces coupées", fr(c.nbPosees - c.entieres)]]]);
+    const nomU = p.fam === "parquet" ? "lames" : "carreaux", f = FORMES_CARREAU[p.forme], nbPrincipal = c.nbCab ? c.nbPieces - c.nbCab : c.nbPieces, paquets = Math.ceil(nbPrincipal / (d.n || 1));
+    s.push([p.fam === "parquet" ? "Revêtement" : "Carrelage", [[p.nom, `${fr(nbPrincipal)} ${c.nbCab ? "octogones" : nomU}`, `${f ? f.texte(d) : `${d.L} × ${d.l} mm`}, marge ${etat.marge} %`], ...(c.nbCab ? [["Cabochons", fr(c.nbCab), `${d.l} × ${d.l} mm, vendus à part`]] : []), ["Boîtes", fr(paquets), `${d.n} ${c.nbCab ? "octogones" : nomU} par boîte`], ...(c.pieces45 ? [] : [["Rangées", fr(c.nbRangs)]]), ["Entiers posés", fr(c.entieres)], ["Pièces coupées", fr(c.nbPosees - c.entieres)]]]);
     for (const r of c.lots) if (r.sMarches) s.push([`Escalier, ${r.e.nb} marches`, [["Marches", `${fr(r.sMarches, 1)} m²`, `${cm(r.e.g)} de profondeur, ${fr(r.o.l, 2)} m de large`], ["Contremarches", `${fr(r.sContre, 1)} m²`, `${r.e.N} de ${cm1(r.e.r)} de haut`], ["Nez de marche", ml(r.mlNez)], [p.fam === "parquet" ? "Lames pour l’escalier" : "Carreaux pour l’escalier", fr(r.nbPieces), "En plus du sol, marge de 20 %"]]]);
     const acc = [], Se = S + c.lots.reduce((v, r) => v + (r.sMarches || 0) + (r.sContre || 0), 0);
     if (p.fam === "parquet") {
@@ -2281,7 +2375,7 @@ function lienEnseigne(e, q) {
   const a = AFFILIATION.awin, mid = a.mids[e.id];
   return a.affid && mid ? `https://www.awin1.com/cread.php?awinmid=${encodeURIComponent(mid)}&awinaffid=${encodeURIComponent(a.affid)}&clickref=calepin&ued=${encodeURIComponent(u)}` : u;
 }
-const RECHERCHE = { pin: "lame terrasse pin autoclave", douglas: "lame terrasse douglas", meleze: "lame terrasse mélèze", exotique: "lame terrasse bois exotique", composite: "lame terrasse composite gris", compobrun: "lame terrasse composite brun", contrecolle: "parquet contrecollé chêne", strat: "sol stratifié chêne", vinyle: "sol vinyle clipsable", c60: "carrelage grès cérame 60x60", c80: "carrelage grès cérame 80x80", c120: "carrelage grès cérame 120x60", c30: "carrelage 30x30", imit: "carrelage imitation parquet" };
+const RECHERCHE = { pin: "lame terrasse pin autoclave", douglas: "lame terrasse douglas", meleze: "lame terrasse mélèze", exotique: "lame terrasse bois exotique", composite: "lame terrasse composite gris", compobrun: "lame terrasse composite brun", contrecolle: "parquet contrecollé chêne", strat: "sol stratifié chêne", vinyle: "sol vinyle clipsable", c60: "carrelage grès cérame 60x60", c80: "carrelage grès cérame 80x80", c120: "carrelage grès cérame 120x60", c30: "carrelage 30x30", imit: "carrelage imitation parquet", hexa: "carrelage hexagonal", hexalong: "carrelage hexagone allongé", octo: "carrelage octogonal cabochon", losange: "carrelage losange", triangle: "carrelage triangle", trapeze: "carrelage trapèze", cube: "carrelage losange effet 3D cube" };
 function listeAchats() {
   const c = calepin, p = c.p, d = c.d, S = c.surfaceUtile, l = [], m2 = v => `${fr(v)} m²`, ml = v => `${fr(v, 1)} m`;
   const q = (nom, qte, recherche, detail) => l.push({ nom, qte, recherche: recherche || nom.toLowerCase(), detail });
@@ -2372,6 +2466,7 @@ function etapesPose() {
   }
   l.push(["Contrôler le support", `Support propre, sec et plan. Appliquez le primaire d’accrochage${etat.support === "bois" ? ", et vérifiez qu’un plancher bois peut recevoir du carrelage : une natte ou un panneau adapté est souvent nécessaire" : ""}.`]);
   if (etat.ecart > 5) l.push(["Reprendre le niveau", `Ragréez pour rattraper l’écart de ${etat.ecart} mm.`]);
+  if (c.pav) { const nf = { hexagone: "hexagones", hexalong: "hexagones allongés", octogone: "octogones et cabochons", losange: "losanges", triangle: "triangles", trapeze: "trapèzes", cube: "losanges du motif cube" }[c.p.forme]; l.push(["Tracer les axes", `Tracez deux axes d’équerre${angle ? " (" + angle.trim().replace(/\.$/, "") + ")" : ""} et posez une première ligne ${/^[aeiouhéè]/i.test(nf) ? "d’" : "de "}${nf} à blanc pour caler le motif.`]); l.push([`Poser les ${nf}`, `Partez du centre, joint de ${d.j} mm avec croisillons adaptés. ${fr(c.nbPosees - c.entieres)} pièces à couper en rive (onglet Coupes) : prévoyez une scie à eau et ${etat.marge + 5} % de chutes.${c.p.forme === "cube" ? " Alternez les trois teintes autour de chaque sommet pour obtenir l’effet cube." : c.p.forme === "octogone" ? " Les cabochons se posent après les octogones, en les centrant dans les réserves." : ""}`]); return l; }
   if (c.chev) { l.push(["Tracer l’axe", `Tracez l’axe central de la pièce dans le sens de pose${angle ? " (" + angle.trim().replace(/\.$/, "") + ")" : ""} et vérifiez l’équerrage avec un 3-4-5.`]); l.push([etat.motif === "hongrie" ? "Poser en chevrons" : "Poser en bâtons rompus", `Carreaux posés à 45° de l’axe, ${etat.motif === "hongrie" ? "bouts coupés à 45° pour former les pointes" : "à 90° les uns des autres"}. Posez la première frise sur l’axe à blanc, puis collez en partant du centre. ${fr(c.nbPosees - c.entieres)} carreaux à couper en rive (onglet Coupes), prévoyez ${etat.marge + 5} % de chutes.`]); return l; }
   l.push(["Tracer les axes", `Tracez deux axes d’équerre et posez les carreaux à blanc. Départ depuis ${lieu}.${angle} Coupes de bord : ${cm1(c.premier)} et ${cm1(c.dernier)}.`]);
   l.push(["Encoller", "Double encollage, au sol et au dos du carreau : le grès cérame est peu poreux. Travaillez par petites zones, selon la notice de la colle."]);
@@ -2393,7 +2488,7 @@ function afficherMetre() {
   $("o-pose").innerHTML = etapesPose().map(([t, x]) => `<li><b>${t}</b><span>${x}</span></li>`).join("");
   const lc = [...c.coupes.entries()].map(([k, n]) => { const [l, h, b] = k.split("|").map(Number); return { l, h, b, n }; }).sort((a, f) => f.n - a.n || f.l - a.l);
   const w = Math.round(c.w * 100), visibles = lc.slice(0, 40);
-  $("o-coupes").innerHTML = `<h3>${c.estExt ? "Longueurs à couper" : "Pièces à couper"}</h3><table class="lignes"><tbody>${visibles.map(q => `<tr><th scope="row">${fr(q.l / 100, 2)} m${q.h !== w ? ` × ${q.h} cm` : ""}${q.b === 1 ? "<small>Coupe en biais</small>" : q.b === 2 ? "<small>Encoche ou découpe</small>" : ""}</th><td>× ${fr(q.n)}</td></tr>`).join("") || `<tr><th scope="row">Aucune coupe</th><td></td></tr>`}</tbody></table>${lc.length > visibles.length ? `<p class="aide">Et ${lc.length - visibles.length} autres longueurs.</p>` : ""}`;
+  $("o-coupes").innerHTML = `<h3>${c.estExt ? "Longueurs à couper" : "Pièces à couper"}</h3><table class="lignes"><tbody>${visibles.map(q => `<tr><th scope="row">${fr(q.l / 100, 2)} m${q.h !== w ? ` × ${q.h} cm` : ""}${q.b === 1 ? "<small>Coupe en biais</small>" : q.b === 2 ? "<small>Encoche ou découpe</small>" : q.b === 3 ? "<small>Cabochon</small>" : ""}</th><td>× ${fr(q.n)}</td></tr>`).join("") || `<tr><th scope="row">Aucune coupe</th><td></td></tr>`}</tbody></table>${lc.length > visibles.length ? `<p class="aide">Et ${lc.length - visibles.length} autres longueurs.</p>` : ""}`;
   const plus = !c.estExt && etat.pieces.length > 1;
   $("onglet-projet").hidden = !plus; if (!plus && onglet === "projet") { onglet = "metre"; appuyer("#onglets", "data-v", onglet); }
   if (plus) afficherProjet();
@@ -2474,11 +2569,11 @@ function maj() {
 }
 function afficherLames() {
   const liste = CATALOGUE.filter(p => p.lieu === etat.lieu && (famille === "tout" || p.fam === famille));
-  $("lames").innerHTML = liste.map(p => { const d = dim(p); return `<button type="button" class="lame" data-lame="${p.id}" aria-pressed="${p.id === etat.produit}"><i style="background-image:url(${p.vignette || (p.vignette = texture(p).toDataURL("image/jpeg", 0.8))})"></i><span><b>${p.nom}</b><small>${d.L} × ${d.l} × ${d.e} mm</small></span></button>`; }).join("");
+  $("lames").innerHTML = liste.map(p => { const d = dim(p), f = FORMES_CARREAU[p.forme]; return `<button type="button" class="lame" data-lame="${p.id}" aria-pressed="${p.id === etat.produit}"><i style="background-image:url(${p.vignette || (p.vignette = f ? vignetteForme(p) : texture(p).toDataURL("image/jpeg", 0.8))})"></i><span><b>${p.nom}</b><small>${f ? f.texte(d) + `, ${d.e} mm` : `${d.L} × ${d.l} × ${d.e} mm`}</small></span></button>`; }).join("");
 }
 function afficherDims() {
-  const p = produit(), d = dim(p), ch = (k, t) => `<label>${t}<input type="text" inputmode="numeric" data-d="${k}" value="${d[k]}"></label>`;
-  $("dims").innerHTML = ch("L", "Longueur (mm)") + ch("l", "Largeur (mm)") + ch("e", "Épaisseur (mm)") + ch("j", ext() ? "Jeu entre lames (mm)" : "Joint (mm)") + (ext() ? "" : ch("n", "Pièces par boîte"));
+  const p = produit(), d = dim(p), f = FORMES_CARREAU[p.forme], ch = (k, t) => `<label>${t}<input type="text" inputmode="numeric" data-d="${k}" value="${d[k]}"></label>`;
+  $("dims").innerHTML = (f ? ch("L", f.L) + (f.l ? ch("l", f.l) : "") : ch("L", "Longueur (mm)") + ch("l", "Largeur (mm)")) + ch("e", "Épaisseur (mm)") + ch("j", ext() ? "Jeu entre lames (mm)" : "Joint (mm)") + (ext() ? "" : ch("n", "Pièces par boîte"));
 }
 function groupe(id, valeurs, actif) { $(id).innerHTML = valeurs.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${String(v) === String(actif)}">${t}</button>`).join(""); }
 function afficherFinitions() {
@@ -2499,7 +2594,7 @@ function synchroniser() {
   $("titre-revetement").textContent = ex ? "Choisissez vos lames" : "Choisissez le revêtement";
   groupe("famille", ex ? [["tout", "Toutes"], ["bois", "Bois"], ["composite", "Composite"]] : [["tout", "Tous"], ["parquet", "Parquet"], ["carrelage", "Carrelage"]], famille);
   groupe("sens", ex ? [[0, "Le long de la maison"], [90, "Vers le jardin"], [45, "En diagonale"]] : [[0, "Horizontal"], [90, "Vertical"], [45, "Diagonale"]], etat.angle);
-  groupe("pose", MOTIFS[p.fam], etat.motif);
+  groupe("pose", MOTIFS[p.fam], etat.motif); $("titre-motif").hidden = $("pose").hidden = $("melanger").hidden = !!p.forme;
   $("hauteur").value = etat.hauteur; $("o-hauteur").textContent = `${etat.hauteur} cm`;
   $("pente").value = etat.pente; $("o-pente").textContent = etat.pente ? `${fr(etat.pente, etat.pente % 1 ? 1 : 0)} %, ${fr(etat.pente, etat.pente % 1 ? 1 : 0)} cm par mètre` : "Terrain plat";
   document.querySelectorAll("#rose [data-az]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.az === "plat" ? etat.pente === 0 : etat.pente > 0 && +b.dataset.az === etat.azimut)));
