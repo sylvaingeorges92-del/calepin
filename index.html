@@ -3056,7 +3056,7 @@ function gommerRessauts(out) {
       const p0 = out[i], p1 = out[(i + 1) % out.length], p2 = out[(i + 2) % out.length], p3 = out[(i + 3) % out.length];
       const e1x = p1.x - p0.x, e1y = p1.y - p0.y, e2x = p2.x - p1.x, e2y = p2.y - p1.y, e3x = p3.x - p2.x, e3y = p3.y - p2.y;
       const L1 = Math.hypot(e1x, e1y), L2 = Math.hypot(e2x, e2y), L3 = Math.hypot(e3x, e3y);
-      if (L2 > 1.1 || L1 > 0.7 || L3 > 0.7 || e1x * e3x + e1y * e3y >= 0) continue;
+      if (e1x * e3x + e1y * e3y >= 0 || !((L2 <= 1.1 && L1 <= 0.7 && L3 <= 0.7) || (L2 <= 3.6 && L1 <= 0.22 && L3 <= 0.22))) continue;
       const horiz = Math.abs(e2x) >= Math.abs(e2y), p3b = horiz ? { x: p3.x, y: p0.y } : { x: p0.x, y: p3.y };
       const j1 = (i + 1) % out.length, j2 = (i + 2) % out.length, j3 = (i + 3) % out.length;
       out[j3] = p3b; out = out.filter((_, k) => k !== j1 && k !== j2); out = net(out); fait = true; break;
@@ -3065,44 +3065,105 @@ function gommerRessauts(out) {
   }
   return out;
 }
+// Pixel libre le plus proche du point touché (le doigt tombe parfois sur un trait ou un texte).
+function pixelLibre(libre, W, H, x0, y0, rmax) {
+  if (libre[y0 * W + x0]) return [x0, y0];
+  for (let r = 1; r <= rmax; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const x = x0 + dx, y = y0 + dy; if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && libre[y * W + x]) return [x, y]; }
+  return null;
+}
+// L'extérieur du bâtiment : l'espace libre qui touche le bord du plan (ou une zone immense). Sert à refermer les baies et fenêtres des murs de façade.
+function masqueExterieur(libre, W, H, ppm) {
+  const ext = new Uint8Array(W * H), vu = new Uint8Array(W * H), grand = 120 * ppm * ppm;
+  const traiter = (x, y, force) => { const i = y * W + x; if (!libre[i] || vu[i]) return; const z = remplir(libre, W, H, x, y); for (let k = 0; k < vu.length; k++) if (z.masque[k]) { vu[k] = 1; if (force || z.bord || z.aire > grand) ext[k] = 1; } };
+  for (let x = 0; x < W; x++) { traiter(x, 0, true); traiter(x, H - 1, true); } for (let y = 0; y < H; y++) { traiter(0, y, true); traiter(W - 1, y, true); }
+  for (let y = 0; y < H; y += 4) for (let x = 0; x < W; x += 4) traiter(x, y, false);
+  return ext;
+}
 function detecterPiece(m) {
   const R = rasteriserFond(), { W, H, sombre, ppm } = R, px = pixelFond(m), x0 = Math.round(px.x * R.kx), y0 = Math.round(px.y * R.ky);
   if (x0 < 1 || y0 < 1 || x0 >= W - 1 || y0 >= H - 1) return null;
-  const mm = v => Math.max(1, Math.round(v * ppm)), aireMin = 0.6 * ppm * ppm, aireMax = 200 * ppm * ppm;
+  const mm = v => Math.max(1, Math.round(v * ppm)), aireMin = 0.6 * ppm * ppm, aireMax = 200 * ppm * ppm, compte = z => z.reduce((a, b) => a + b, 0);
   // Deux lectures des murs : traits épais seulement (plans d'architecte : mobilier et textes ignorés), puis tous les traits (croquis au trait fin).
   const lectures = [fermer(ouvrir(sombre, W, H, mm(0.035)), W, H, mm(0.08)), fermer(sombre, W, H, mm(0.02))];
-  for (let murs of lectures) {
+  for (let [num, murs] of lectures.entries()) {
     murs = grandsComposants(murs, W, H, Math.round(1 * ppm * ppm), mm(1.6));
-    const libre = new Uint8Array(W * H); for (let i = 0; i < libre.length; i++) libre[i] = murs[i] ? 0 : 1;
+    const libre0 = new Uint8Array(W * H); for (let i = 0; i < libre0.length; i++) libre0[i] = murs[i] ? 0 : 1;
+    // En lecture « traits épais », les traits des fenêtres ont disparu : on referme les façades en interdisant une mince bande le long de l'extérieur.
+    let libre = libre0, dehors = null;
+    if (num === 0) {
+      // Enveloppe du bâtiment : murs épais refermés à grande échelle (baies et fenêtres bouchées), puis extérieur = ce qui reste dehors.
+      const enveloppe = fermer(murs, W, H, mm(1.3)), horsEnv = new Uint8Array(W * H); for (let i = 0; i < horsEnv.length; i++) horsEnv[i] = enveloppe[i] ? 0 : 1;
+      const bande = dilater(masqueExterieur(horsEnv, W, H, ppm), W, H, mm(0.12)); libre = new Uint8Array(W * H); for (let i = 0; i < libre.length; i++) libre[i] = libre0[i] && !bande[i] ? 1 : 0;
+      dehors = bande;
+    }
     // Cœur de la pièce : l'espace libre érodé d'un demi-passage de porte, pour ne pas déborder dans les pièces voisines par les portes ouvertes.
-    let zone = null;
-    for (const r of [0.46, 0.34, 0.24, 0.14]) {
-      const coeur = eroder(libre, W, H, mm(r)), z = remplir(coeur, W, H, x0, y0);
-      if (!z) continue;
-      if (z.bord || z.aire > aireMax) break; // débordement : cette lecture des murs ne tient pas
-      if (z.aire < aireMin * 0.3) continue;
+    const extraire = r => {
+      const coeur = eroder(libre, W, H, mm(r)), dep = pixelLibre(coeur, W, H, x0, y0, mm(0.5)); if (!dep) return null;
+      const z = remplir(coeur, W, H, dep[0], dep[1]); if (!z) return null;
+      if (z.bord || z.aire > aireMax) return { deborde: true };
+      if (z.aire < aireMin * 0.3) return null;
       let piece = dilater(z.masque, W, H, mm(r)); for (let i = 0; i < piece.length; i++) piece[i] = piece[i] && libre[i] ? 1 : 0;
       piece = boucherTrous(piece, W, H); piece = ouvrir(piece, W, H, mm(Math.min(r, 0.46)));
-      const z2 = remplir(piece, W, H, x0, y0); if (!z2 || z2.aire < aireMin) continue;
-      zone = boucherTrous(z2.masque, W, H); break;
-    }
-    if (!zone) continue;
-    const cont = contourMasque(zone, W, H); if (!cont) continue;
+      const d2 = pixelLibre(piece, W, H, x0, y0, mm(0.5)); if (!d2) return null;
+      const z2 = remplir(piece, W, H, d2[0], d2[1]); if (!z2 || z2.aire < aireMin) return null;
+      return { zone: boucherTrous(z2.masque, W, H), aire: z2.aire };
+    };
+    let res = null, deborde = false;
+    for (const r of [0.46, 0.34, 0.24, 0.14]) { const z = extraire(r); if (!z) continue; if (z.deborde) { deborde = true; break; } res = z; break; }
+    if (deborde || !res) continue;
+    // Portes à deux vantaux ou larges baies intérieures : si un demi-passage plus grand coupe une grande part de la zone, c'était un passage.
+    for (const r of [0.7, 0.95]) { const z = extraire(r); if (!z || z.deborde) break; if (z.aire < 0.72 * res.aire) res = z; else break; }
+    const cont = contourMasque(res.zone, W, H); if (!cont) continue;
     // Pixels de travail → pixels de l'image → monde
     let pts = cont.map(q => pointFond(q.x / R.kx, q.y / R.ky));
     pts = simplifier(pts, 0.035); if (pts.length < 3) continue;
     pts = equerrer(pts).map(p => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }));
-    if (pts.length >= 3 && Math.abs(aireSignee(pts)) >= 0.6) return pts;
+    if (pts.length >= 3 && Math.abs(aireSignee(pts)) >= 0.6) return { pts, ouv: detecterOuvertures(pts, R, murs, libre, sombre, dehors) };
   }
   return null;
+}
+// Portes, passages et fenêtres : trous dans le mur le long de chaque côté de la pièce, classés d'après ce qui est dessiné (arc de porte, traits de fenêtre, extérieur ou pièce voisine).
+function detecterOuvertures(pts, R, murs, libre, sombre, dehors) {
+  const { W, H, ppm } = R, out = [], s = aireSignee(pts) > 0 ? 1 : -1, aireP = Math.abs(aireSignee(pts));
+  const px = p => { const q = pixelFond(p); return { x: q.x * R.kx, y: q.y * R.ky }; }, lit = (m, q) => (q.x >= 0 && q.y >= 0 && q.x < W && q.y < H) ? m[(q.y | 0) * W + (q.x | 0)] : 0;
+  const densite = (m, A, ux, uy, nx, ny, t0, t1, d0, d1) => { let n = 0, k = 0; for (let t = t0; t <= t1; t += 0.02) for (let d = d0; d <= d1; d += 0.02) { k++; if (lit(m, px({ x: A.x + ux * t + nx * d, y: A.y + uy * t + ny * d }))) n++; } return k ? n / k : 0; };
+  // Arc de porte : quart de cercle de rayon L articulé sur l'un des deux jambages, ouvert vers l'intérieur de la pièce.
+  const voisin = q => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (lit(sombre, { x: q.x + dx, y: q.y + dy })) return 1; return 0; };
+  const arcPresent = (A, ux, uy, nx, ny, t0, t1, d0, sens) => { const L = t1 - t0; let meilleur = 0; for (const [h, sg] of [[t0, 1], [t1, -1]]) { let n = 0, k = 0; for (let a = 6; a <= 84; a += 6) { const ca = Math.cos(a * Math.PI / 180) * L * sg, sa = d0 + sens * Math.sin(a * Math.PI / 180) * L; k++; if (voisin(px({ x: A.x + ux * (h + ca) + nx * sa, y: A.y + uy * (h + ca) + ny * sa }))) n++; } meilleur = Math.max(meilleur, n / k); } return meilleur >= 0.5; };
+  // Épaisseur du mur à côté d'une ouverture : jusqu'où les pixels de mur s'étendent au-delà du bord de la pièce.
+  const epaisseur = (A, ux, uy, nx, ny, t) => { let der = 0; for (let d = 0.03; d <= 0.6; d += 0.02) if (lit(murs, px({ x: A.x + ux * t + nx * d, y: A.y + uy * t + ny * d }))) der = d; return der; };
+  for (let i = 0; i < pts.length; i++) {
+    const A = pts[i], B = pts[(i + 1) % pts.length], len = Math.hypot(B.x - A.x, B.y - A.y); if (len < 0.6) continue;
+    const ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, nx = uy * s, ny = -ux * s, pas = 0.02, N = Math.floor(len / pas), prof = new Uint8Array(N);
+    for (let k = 0; k < N; k++) { const t = (k + 0.5) * pas; for (let d = 0.03; d <= 0.32; d += 0.03) if (lit(murs, px({ x: A.x + ux * t + nx * d, y: A.y + uy * t + ny * d }))) { prof[k] = 1; break; } }
+    const marge = Math.round(0.12 / pas);
+    for (let k = marge; k < N - marge;) {
+      if (prof[k]) { k++; continue; }
+      let e = k; while (e < N - marge && !prof[e]) e++;
+      const t0 = k * pas, t1 = e * pas, L = t1 - t0; k = e;
+      if (L < 0.55 || L > 3.4) continue;
+      const tc = (t0 + t1) / 2, cx = A.x + ux * tc, cy = A.y + uy * tc;
+      // Au-delà du mur : extérieur (zone vaste ou touchant le bord du plan) ou pièce voisine ?
+      let exterieur = false;
+      for (const d of [0.45, 0.65, 0.9]) { const q = px({ x: cx + nx * d, y: cy + ny * d }); if (dehors) { if (lit(dehors, q)) { exterieur = true; break; } if (lit(libre, q)) break; continue; } if (!lit(libre, q)) continue; const z = remplir(libre, W, H, q.x | 0, q.y | 0); if (z) exterieur = z.bord || z.aire > Math.max(25, 0.8 * aireP) * ppm * ppm; break; }
+      const ep = Math.max(epaisseur(A, ux, uy, nx, ny, Math.max(0.05, t0 - 0.1)), epaisseur(A, ux, uy, nx, ny, Math.min(len - 0.05, t1 + 0.1)), 0.1);
+      const arc = L <= 1.4 && (arcPresent(A, ux, uy, nx, ny, t0, t1, 0, -1) || arcPresent(A, ux, uy, nx, ny, t0, t1, ep + 0.02, 1)), traits = densite(sombre, A, ux, uy, nx, ny, t0 + 0.08, t1 - 0.08, 0.02, Math.min(0.3, ep - 0.03)) > 0.04;
+      const type = exterieur ? (arc ? (L < 1.2 ? "porte" : "baie") : L >= 1.6 && !traits ? "baie" : "fenetre") : (arc || L <= 1.05 ? "porte" : traits ? "fenetre" : "passage");
+      out.push({ type, x: Math.round(cx * 100) / 100, y: Math.round(cy * 100) / 100, l: Math.max(0.6, Math.round(L * 20) / 20) });
+    }
+  }
+  return out;
 }
 function lancerDetection(m) {
   bandeau("Recherche de la pièce…");
   setTimeout(() => {
-    let pts = null; try { pts = detecterPiece(m); } catch (e) { pts = null; }
+    let res = null; try { res = detecterPiece(m); } catch (e) { res = null; }
+    const pts = res && res.pts;
     if (!pts) { bandeau('Pas de pièce fermée à cet endroit. Touchez un autre point à l’intérieur de la pièce, ou <button type="button" id="piece-non">tracez les murs vous-même</button>.'); $("piece-non").addEventListener("click", () => { mode = null; bandeau(""); }); return; }
-    memoriser(); etat.poly = pts; etat.forme = null; synchroniser();
-    bandeau(`Pièce détectée : ${fr(Math.abs(aireSignee(pts)), 1)} m², ${pts.length} côtés. <button type="button" id="piece-ok">C’est bon</button><button type="button" id="piece-autre" class="second">Autre pièce</button>`);
+    memoriser(); etat.poly = pts; etat.forme = null; etat.ouvertures = res.ouv; synchroniser();
+    const nb = {}; for (const o of res.ouv) nb[o.type] = (nb[o.type] || 0) + 1;
+    const txtOuv = Object.entries(nb).map(([t, n]) => `${n} ${OUVERTURES[t].nom.toLowerCase()}${n > 1 ? "s" : ""}`).join(", ");
+    bandeau(`Pièce détectée : ${fr(Math.abs(aireSignee(pts)), 1)} m², ${pts.length} côtés${txtOuv ? ", " + txtOuv : ""}. <button type="button" id="piece-ok">C’est bon</button><button type="button" id="piece-autre" class="second">Autre pièce</button>`);
     $("piece-ok").addEventListener("click", () => { mode = null; bandeau(""); cadrer(); toast("Ajustez les sommets si besoin, puis passez à la suite."); });
     $("piece-autre").addEventListener("click", () => { mode = "piece"; bandeau("Touchez l’intérieur de la pièce à calepiner."); });
   }, 30);
