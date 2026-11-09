@@ -141,6 +141,7 @@ h2, h3, p { margin: 0; }
 .bandeau { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 6; padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100% - 28px); box-sizing: border-box; }
 .bandeau input { width: 84px; min-height: 36px; padding: 0 8px; border: 1.5px solid var(--ligne); border-radius: 8px; background: var(--creux); font-weight: 700; box-sizing: border-box; }
 .bandeau button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--noir); color: var(--sur-noir); font-weight: 700; }
+.bandeau button.second { background: var(--creux); color: var(--encre); }
 #cote-edit { position: absolute; width: 84px; height: 32px; box-sizing: border-box; text-align: center; font-weight: 700; border: 2px solid var(--accent); border-radius: 8px; background: var(--panneau); z-index: 7; transform: translate(-50%, -50%); }
 #toast { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); z-index: 8; pointer-events: none; padding: 9px 14px; background: var(--noir); color: var(--sur-noir); border-radius: 10px; font-weight: 600; max-width: calc(100% - 28px); box-sizing: border-box; text-align: center; }
 
@@ -456,6 +457,7 @@ h2, h3, p { margin: 0; }
       <div id="reglages-fond" hidden>
         <div class="curseur"><label for="fond-opacite">Visibilité</label><input id="fond-opacite" type="range" min="20" max="100" value="100"><output id="o-opacite">100 %</output></div>
         <div class="curseur"><label for="fond-angle">Orientation</label><input id="fond-angle" type="range" min="-90" max="90" value="0"><output id="o-angle">0°</output></div>
+        <button class="lien" id="fond-piece" type="button">Reconnaître une pièce du plan</button>
         <button class="lien" id="fond-retirer" type="button">Retirer ce fond</button>
         <p class="aide">Ce curseur tourne la photo. Pour tourner la terrasse elle-même, voyez l’étape Forme.</p>
       </div>
@@ -2029,6 +2031,7 @@ scene.addEventListener("pointerdown", e => {
   const q = pos(e); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
   const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-co],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-erot],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
   if (mode === "calibrage" && pointeurs.size === 1) { if (calibration.length < 2) { calibration.push(monde(q.x, q.y)); if (calibration.length === 2) demanderDistance(); planifier(); } return; }
+  if (mode === "piece" && pointeurs.size === 1) { lancerDetection(monde(q.x, q.y)); return; }
   if (pointeurs.size === 2) { const [a, b] = [...pointeurs.values()]; geste = { type: "pince", d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, ox: cam.ox, oy: cam.oy, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
   const m = monde(q.x, q.y);
   if (d.b !== undefined) {
@@ -2664,7 +2667,7 @@ $("enregistrer").addEventListener("click", () => { try { localStorage.setItem(CL
 const chargerScript = (src, g) => new Promise((ok, ko) => { if (g && window[g]) return ok(); const s = document.createElement("script"); s.src = src; s.onload = () => ok(); s.onerror = () => ko(new Error(src)); document.head.appendChild(s); });
 function bandeau(h) { const b = $("bandeau"); b.innerHTML = h; b.hidden = !h; }
 function choixFond(k) { document.querySelectorAll("[data-fond]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fond === k))); $("bloc-adresse").hidden = k !== "adresse"; }
-function fondActif() { $("reglages-fond").hidden = !fond; $("credit").hidden = !(fond && fond.aerien); $("fond-opacite").value = fond ? fond.opacite * 100 : 100; $("o-opacite").textContent = `${$("fond-opacite").value} %`; $("fond-angle").value = fond ? fond.angle : 0; $("o-angle").textContent = `${$("fond-angle").value}°`; }
+function fondActif() { $("reglages-fond").hidden = !fond; $("fond-piece").hidden = !fond || !!fond.aerien; $("credit").hidden = !(fond && fond.aerien); $("fond-opacite").value = fond ? fond.opacite * 100 : 100; $("o-opacite").textContent = `${$("fond-opacite").value} %`; $("fond-angle").value = fond ? fond.angle : 0; $("o-angle").textContent = `${$("fond-angle").value}°`; }
 document.querySelectorAll("[data-fond]").forEach(b => b.addEventListener("click", () => {
   const k = b.dataset.fond; choixFond(k);
   if (k === "adresse") $("adresse").focus();
@@ -2826,14 +2829,201 @@ function demanderDistance() {
     const [a, b] = calibration, d = Math.hypot(a.x - b.x, a.y - b.y), f = v / d, cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
     fond.m *= f; fond.x = cx + (fond.x - cx) * f; fond.y = cy + (fond.y - cy) * f;
     const bb = boiteEnglobante(etat.poly); fond.x += (bb.umin + bb.umax) / 2 - (fond.x + fond.l * fond.m / 2); fond.y += (bb.vmin + bb.vmax) / 2 - (fond.y + fond.h * fond.m / 2);
-    mode = null; calibration = []; bandeau(""); toast("Échelle réglée."); cadrer();
+    calibration = []; toast("Échelle réglée."); cadrer(); proposerDetection();
   };
   $("dist-ok").addEventListener("click", ok); champ.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
 }
 $("fond-opacite").addEventListener("input", e => { if (fond) { fond.opacite = e.target.value / 100; $("o-opacite").textContent = `${e.target.value} %`; planifier(); } });
 $("fond-angle").addEventListener("input", e => { if (fond) { fond.angle = +e.target.value; if (etat.site) etat.site.angle = fond.angle; $("o-angle").textContent = `${e.target.value}°`; planifier(); sceneModifiee(); } });
 $("lire-pente").addEventListener("click", lirePente);
+$("fond-piece").addEventListener("click", () => { if (!fond || fond.aerien) return; if (vue !== "plan") changerVue("plan"); proposerDetection(); });
 $("fond-retirer").addEventListener("click", () => { fond = null; etat.site = null; afficherAjouts(); mode = null; calibration = []; bandeau(""); choixFond("exemple"); fondActif(); cadrer(); });
+
+/* ---- Détection d'une pièce sur un plan importé ----
+   On touche l'intérieur d'une pièce : les murs (traits sombres) sont isolés, la zone est remplie depuis le point touché,
+   les passages de porte et le mobilier sont gommés, puis le contour est simplifié et mis d'équerre. Tout se fait dans le navigateur. */
+function pixelFond(p) { const f = fond, a = (f.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), dx = p.x - (f.x + f.l * f.m / 2), dy = p.y - (f.y + f.h * f.m / 2); return { x: (dx * ca + dy * sa) / f.m + f.l / 2, y: (-dx * sa + dy * ca) / f.m + f.h / 2 }; }
+let rasterFond = null;
+function rasteriserFond() {
+  const f = fond, cle = `${f.l}x${f.h}|${f.m}`;
+  if (rasterFond && rasterFond.cle === cle) return rasterFond;
+  // Grille de travail à 50 px/m au plus ; un pixel de travail est sombre dès qu'un pixel source l'est (les traits fins survivent à la réduction).
+  const ppmSrc = 1 / f.m, k = Math.min(1, 50 / ppmSrc), W = Math.max(4, Math.round(f.l * k)), H = Math.max(4, Math.round(f.h * k));
+  const red = Math.min(1, Math.sqrt(6e6 / (f.l * f.h))), l0 = Math.max(W, Math.round(f.l * red)), h0 = Math.max(H, Math.round(f.h * red));
+  const c = document.createElement("canvas"); c.width = l0; c.height = h0; const g = c.getContext("2d", { willReadFrequently: true }); g.fillStyle = "#fff"; g.fillRect(0, 0, l0, h0); g.drawImage(f.image, 0, 0, l0, h0);
+  const d = g.getImageData(0, 0, l0, h0).data, lum = new Uint8Array(l0 * h0), hist = new Float64Array(256);
+  for (let i = 0, j = 0; i < lum.length; i++, j += 4) { const v = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8; lum[i] = v; hist[v]++; }
+  // Seuil d'Otsu, borné pour les scans gris
+  let somme = 0; for (let t = 0; t < 256; t++) somme += t * hist[t];
+  let sB = 0, wB = 0, max = 0, seuil = 128; const total = l0 * h0;
+  for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = total - wB; if (!wF) break; sB += t * hist[t]; const mB = sB / wB, mF = (somme - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF); if (v > max) { max = v; seuil = t; } }
+  seuil = clamp(seuil, 80, 170);
+  const sombre = new Uint8Array(W * H), sx = l0 / W, sy = h0 / H;
+  for (let y = 0; y < h0; y++) { const Y = Math.min(H - 1, (y / sy) | 0) * W; for (let x = 0; x < l0; x++) if (lum[y * l0 + x] < seuil) sombre[Y + Math.min(W - 1, (x / sx) | 0)] = 1; }
+  rasterFond = { cle, W, H, sombre, kx: W / f.l, ky: H / f.h, ppm: W / (f.l * f.m) };
+  return rasterFond;
+}
+// Morphologie binaire à fenêtre carrée (séparable) : dilatation, érosion, ouverture, fermeture.
+function dilater(src, W, H, r) {
+  if (r <= 0) return src.slice();
+  const t = new Uint8Array(W * H), o = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) { const b = y * W; let s = 0; for (let x = 0; x < Math.min(W, r); x++) s += src[b + x]; for (let x = 0; x < W; x++) { if (x + r < W) s += src[b + x + r]; if (x - r - 1 >= 0) s -= src[b + x - r - 1]; t[b + x] = s > 0 ? 1 : 0; } }
+  for (let x = 0; x < W; x++) { let s = 0; for (let y = 0; y < Math.min(H, r); y++) s += t[y * W + x]; for (let y = 0; y < H; y++) { if (y + r < H) s += t[(y + r) * W + x]; if (y - r - 1 >= 0) s -= t[(y - r - 1) * W + x]; o[y * W + x] = s > 0 ? 1 : 0; } }
+  return o;
+}
+function eroder(src, W, H, r) { const inv = new Uint8Array(src.length); for (let i = 0; i < src.length; i++) inv[i] = 1 - src[i]; const d = dilater(inv, W, H, r); for (let i = 0; i < d.length; i++) d[i] = 1 - d[i]; return d; }
+const ouvrir = (s, W, H, r) => dilater(eroder(s, W, H, r), W, H, r), fermer = (s, W, H, r) => eroder(dilater(s, W, H, r), W, H, r);
+// Ne garde que les grandes composantes connexes (8-connexité) : les murs ; textes, cotes, arcs de porte et petits meubles isolés disparaissent.
+function grandsComposants(m, W, H, minPx, minEtendue) {
+  const lab = new Int32Array(W * H), pile = new Int32Array(W * H), out = new Uint8Array(W * H); let id = 0;
+  for (let s0 = 0; s0 < m.length; s0++) {
+    if (!m[s0] || lab[s0]) continue; id++; let k = 0, c = 0, x0 = W, x1 = 0, y0 = H, y1 = 0; pile[k++] = s0; lab[s0] = id;
+    while (k) { const i = pile[--k]; c++; const x = i % W, y = (i - x) / W; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const j = Y * W + X; if (m[j] && !lab[j]) { lab[j] = id; pile[k++] = j; } } }
+    if (c >= minPx || Math.max(x1 - x0, y1 - y0) >= minEtendue) { const stack = [s0]; out[s0] = 1; while (stack.length) { const i = stack.pop(), x = i % W, y = (i - x) / W; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const j = Y * W + X; if (lab[j] === id && !out[j]) { out[j] = 1; stack.push(j); } } } }
+  }
+  return out;
+}
+// Remplissage 4-connexe depuis un pixel ; signale si la zone touche le bord de l'image.
+function remplir(libre, W, H, x0, y0) {
+  const i0 = y0 * W + x0; if (!libre[i0]) return null;
+  const out = new Uint8Array(W * H), pile = new Int32Array(W * H); let n = 0, aire = 0, bord = false; pile[n++] = i0; out[i0] = 1;
+  while (n) {
+    const i = pile[--n], x = i % W, y = (i - x) / W; aire++; if (x === 0 || y === 0 || x === W - 1 || y === H - 1) bord = true;
+    if (x > 0 && libre[i - 1] && !out[i - 1]) { out[i - 1] = 1; pile[n++] = i - 1; }
+    if (x < W - 1 && libre[i + 1] && !out[i + 1]) { out[i + 1] = 1; pile[n++] = i + 1; }
+    if (y > 0 && libre[i - W] && !out[i - W]) { out[i - W] = 1; pile[n++] = i - W; }
+    if (y < H - 1 && libre[i + W] && !out[i + W]) { out[i + W] = 1; pile[n++] = i + W; }
+  }
+  return { masque: out, aire, bord };
+}
+// Bouche les trous (mobilier, textes) : tout ce qui n'est pas relié au bord de l'image par l'extérieur devient intérieur.
+function boucherTrous(m, W, H) {
+  const ext = new Uint8Array(W * H), pile = new Int32Array(W * H); let n = 0;
+  const pousse = i => { if (!m[i] && !ext[i]) { ext[i] = 1; pile[n++] = i; } };
+  for (let x = 0; x < W; x++) { pousse(x); pousse((H - 1) * W + x); } for (let y = 0; y < H; y++) { pousse(y * W); pousse(y * W + W - 1); }
+  while (n) { const i = pile[--n], x = i % W; if (x > 0) pousse(i - 1); if (x < W - 1) pousse(i + 1); if (i >= W) pousse(i - W); if (i + W < W * H) pousse(i + W); }
+  const o = new Uint8Array(W * H); for (let i = 0; i < o.length; i++) o[i] = ext[i] ? 0 : 1; return o;
+}
+// Contour extérieur (suivi des arêtes entre pixels, intérieur à droite) à partir du pixel le plus haut à gauche de la zone.
+function contourMasque(m, W, H) {
+  let s = -1; for (let i = 0; i < m.length; i++) if (m[i]) { s = i; break; } if (s < 0) return null;
+  const dedans = (x, y) => x >= 0 && y >= 0 && x < W && y < H && m[y * W + x] === 1;
+  const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1]; // E, S, O, N
+  let x = s % W, y = (s - x) / W, d = 0; const x0 = x, y0 = y, pts = [], max = 4 * W * H + 8;
+  for (let it = 0; it < max; it++) {
+    // pixels devant-gauche / devant-droite selon la direction
+    let gx, gy, rx, ry;
+    if (d === 0) { gx = x; gy = y - 1; rx = x; ry = y; } else if (d === 1) { gx = x; gy = y; rx = x - 1; ry = y; } else if (d === 2) { gx = x - 1; gy = y; rx = x - 1; ry = y - 1; } else { gx = x - 1; gy = y - 1; rx = x; ry = y - 1; }
+    let nd; if (dedans(gx, gy)) nd = (d + 3) % 4; else if (dedans(rx, ry)) nd = d; else nd = (d + 1) % 4;
+    if (nd !== d) { pts.push({ x, y }); d = nd; if (x === x0 && y === y0 && d === 0) break; continue; }
+    x += DX[d]; y += DY[d];
+    if (x === x0 && y === y0 && d === 0) break;
+  }
+  return pts.length >= 4 ? pts : null;
+}
+// Simplification de Douglas-Peucker (polygone fermé).
+function simplifier(pts, eps) {
+  const dist = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-12, t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / L2, 0, 1); return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); };
+  const dp = (P, a, b) => { if (b - a < 2) return [P[a]]; let im = -1, dm = 0; for (let i = a + 1; i < b; i++) { const dd = dist(P[i], P[a], P[b]); if (dd > dm) { dm = dd; im = i; } } return dm > eps ? [...dp(P, a, im), ...dp(P, im, b)] : [P[a]]; };
+  // coupe au point le plus éloigné du premier pour fermer proprement
+  let far = 0, dmax = 0; for (let i = 1; i < pts.length; i++) { const dd = Math.hypot(pts[i].x - pts[0].x, pts[i].y - pts[0].y); if (dd > dmax) { dmax = dd; far = i; } }
+  const rot = [...pts.slice(far), ...pts.slice(0, far)], closed = [...rot, rot[0]];
+  let k = 1; dmax = 0; for (let i = 1; i < rot.length; i++) { const dd = Math.hypot(rot[i].x - rot[0].x, rot[i].y - rot[0].y); if (dd > dmax) { dmax = dd; k = i; } }
+  return [...dp(closed, 0, k), ...dp(closed, k, closed.length - 1)];
+}
+// Mise d'équerre : orientation dominante, arêtes classées H/V puis fusionnées, sommets aux intersections ; les murs en biais sont conservés tels quels.
+function equerrer(pts) {
+  let sx = 0, sy = 0, n = pts.length;
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < 1e-6) continue; const t = 4 * Math.atan2(b.y - a.y, b.x - a.x); sx += L * Math.cos(t); sy += L * Math.sin(t); }
+  const th = Math.atan2(sy, sx) / 4, c = Math.cos(-th), s = Math.sin(-th), loc = pts.map(p => ({ x: p.x * c - p.y * s, y: p.x * s + p.y * c }));
+  let tot = 0, ok = 0, runs = [];
+  for (let i = 0; i < n; i++) {
+    const a = loc[i], b = loc[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy); if (L < 1e-6) continue;
+    const h = Math.abs(dx) >= Math.abs(dy), dev = h ? Math.atan2(Math.abs(dy), Math.abs(dx)) : Math.atan2(Math.abs(dx), Math.abs(dy)); tot += L; if (dev < 0.2) ok += L;
+    runs.push({ k: h ? "H" : "V", v: h ? (a.y + b.y) / 2 : (a.x + b.x) / 2, L });
+  }
+  if (!tot || ok / tot < 0.75) return pts;
+  const fusionner = () => { const r = []; for (const q of runs) { const l = r[r.length - 1]; if (l && l.k === q.k) { l.v = (l.v * l.L + q.v * q.L) / (l.L + q.L); l.L += q.L; } else r.push({ ...q }); } if (r.length > 1 && r[0].k === r[r.length - 1].k) { const l = r.pop(); r[0].v = (r[0].v * r[0].L + l.v * l.L) / (r[0].L + l.L); r[0].L += l.L; } runs = r; };
+  fusionner();
+  for (let it = 0; it < 200 && runs.length > 4; it++) { let im = -1, lm = 0.06; runs.forEach((q, i) => { if (q.L < lm) { lm = q.L; im = i; } }); if (im < 0) break; runs.splice(im, 1); fusionner(); }
+  if (runs.length < 4 || runs.length % 2) return pts;
+  let out = runs.map((r, i) => { const q = runs[(i + 1) % runs.length]; return r.k === "H" ? { x: q.v, y: r.v } : { x: r.v, y: q.v }; });
+  out = gommerRessauts(out);
+  const c2 = Math.cos(th), s2 = Math.sin(th); return out.map(p => ({ x: p.x * c2 - p.y * s2, y: p.x * s2 + p.y * c2 }));
+}
+// Gomme les ressauts de la taille d'une porte (≤ 1,10 m de large, ≤ 0,70 m de profondeur) sur un polygone d'équerre : passages, embrasures, petits décrochements.
+function gommerRessauts(out) {
+  const net = p => { const r = []; for (let i = 0; i < p.length; i++) { const a = p[(i + p.length - 1) % p.length], b = p[i], c = p[(i + 1) % p.length]; if (Math.hypot(b.x - a.x, b.y - a.y) < 1e-6) continue; if ((Math.abs(a.x - b.x) < 1e-6 && Math.abs(b.x - c.x) < 1e-6) || (Math.abs(a.y - b.y) < 1e-6 && Math.abs(b.y - c.y) < 1e-6)) continue; r.push(b); } return r; };
+  out = net(out);
+  for (let it = 0; it < 40 && out.length > 4; it++) {
+    let fait = false;
+    for (let i = 0; i < out.length; i++) {
+      const p0 = out[i], p1 = out[(i + 1) % out.length], p2 = out[(i + 2) % out.length], p3 = out[(i + 3) % out.length];
+      const e1x = p1.x - p0.x, e1y = p1.y - p0.y, e2x = p2.x - p1.x, e2y = p2.y - p1.y, e3x = p3.x - p2.x, e3y = p3.y - p2.y;
+      const L1 = Math.hypot(e1x, e1y), L2 = Math.hypot(e2x, e2y), L3 = Math.hypot(e3x, e3y);
+      if (L2 > 1.1 || L1 > 0.7 || L3 > 0.7 || e1x * e3x + e1y * e3y >= 0) continue;
+      const horiz = Math.abs(e2x) >= Math.abs(e2y), p3b = horiz ? { x: p3.x, y: p0.y } : { x: p0.x, y: p3.y };
+      const j1 = (i + 1) % out.length, j2 = (i + 2) % out.length, j3 = (i + 3) % out.length;
+      out[j3] = p3b; out = out.filter((_, k) => k !== j1 && k !== j2); out = net(out); fait = true; break;
+    }
+    if (!fait) break;
+  }
+  return out;
+}
+function detecterPiece(m) {
+  const R = rasteriserFond(), { W, H, sombre, ppm } = R, px = pixelFond(m), x0 = Math.round(px.x * R.kx), y0 = Math.round(px.y * R.ky);
+  if (x0 < 1 || y0 < 1 || x0 >= W - 1 || y0 >= H - 1) return null;
+  const mm = v => Math.max(1, Math.round(v * ppm)), aireMin = 0.6 * ppm * ppm, aireMax = 200 * ppm * ppm;
+  // Deux lectures des murs : traits épais seulement (plans d'architecte : mobilier et textes ignorés), puis tous les traits (croquis au trait fin).
+  const lectures = [fermer(ouvrir(sombre, W, H, mm(0.035)), W, H, mm(0.08)), fermer(sombre, W, H, mm(0.02))];
+  for (let murs of lectures) {
+    murs = grandsComposants(murs, W, H, Math.round(1 * ppm * ppm), mm(1.6));
+    const libre = new Uint8Array(W * H); for (let i = 0; i < libre.length; i++) libre[i] = murs[i] ? 0 : 1;
+    // Cœur de la pièce : l'espace libre érodé d'un demi-passage de porte, pour ne pas déborder dans les pièces voisines par les portes ouvertes.
+    let zone = null;
+    for (const r of [0.46, 0.34, 0.24, 0.14]) {
+      const coeur = eroder(libre, W, H, mm(r)), z = remplir(coeur, W, H, x0, y0);
+      if (!z) continue;
+      if (z.bord || z.aire > aireMax) break; // débordement : cette lecture des murs ne tient pas
+      if (z.aire < aireMin * 0.3) continue;
+      let piece = dilater(z.masque, W, H, mm(r)); for (let i = 0; i < piece.length; i++) piece[i] = piece[i] && libre[i] ? 1 : 0;
+      piece = boucherTrous(piece, W, H); piece = ouvrir(piece, W, H, mm(Math.min(r, 0.46)));
+      const z2 = remplir(piece, W, H, x0, y0); if (!z2 || z2.aire < aireMin) continue;
+      zone = boucherTrous(z2.masque, W, H); break;
+    }
+    if (!zone) continue;
+    const cont = contourMasque(zone, W, H); if (!cont) continue;
+    // Pixels de travail → pixels de l'image → monde
+    let pts = cont.map(q => pointFond(q.x / R.kx, q.y / R.ky));
+    pts = simplifier(pts, 0.035); if (pts.length < 3) continue;
+    pts = equerrer(pts).map(p => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }));
+    if (pts.length >= 3 && Math.abs(aireSignee(pts)) >= 0.6) return pts;
+  }
+  return null;
+}
+function lancerDetection(m) {
+  bandeau("Recherche de la pièce…");
+  setTimeout(() => {
+    let pts = null; try { pts = detecterPiece(m); } catch (e) { pts = null; }
+    if (!pts) { bandeau('Pas de pièce fermée à cet endroit. Touchez un autre point à l’intérieur de la pièce, ou <button type="button" id="piece-non">tracez les murs vous-même</button>.'); $("piece-non").addEventListener("click", () => { mode = null; bandeau(""); }); return; }
+    memoriser(); etat.poly = pts; etat.forme = null; synchroniser();
+    bandeau(`Pièce détectée : ${fr(Math.abs(aireSignee(pts)), 1)} m², ${pts.length} côtés. <button type="button" id="piece-ok">C’est bon</button><button type="button" id="piece-autre" class="second">Autre pièce</button>`);
+    $("piece-ok").addEventListener("click", () => { mode = null; bandeau(""); cadrer(); toast("Ajustez les sommets si besoin, puis passez à la suite."); });
+    $("piece-autre").addEventListener("click", () => { mode = "piece"; bandeau("Touchez l’intérieur de la pièce à calepiner."); });
+  }, 30);
+}
+// Cadre le plan importé en entier, pour pouvoir désigner n'importe quelle pièce.
+function cadrerFond() {
+  if (!fond) return;
+  const coins = [[0, 0], [fond.l, 0], [fond.l, fond.h], [0, fond.h]].map(([x, y]) => pointFond(x, y)), bb = boiteEnglobante(coins), m = etroit() ? 60 : 80;
+  const w = Math.max(40, LP - 2 * m), h = Math.max(40, HP - 100 - m);
+  cam.z = Math.min(w / (bb.umax - bb.umin), h / (bb.vmax - bb.vmin), 110); cam.ox = m + w / 2 - (bb.umin + bb.umax) / 2 * cam.z; cam.oy = 100 + h / 2 - (bb.vmin + bb.vmax) / 2 * cam.z; planifier();
+}
+function proposerDetection() {
+  mode = "piece"; rasterFond = null; cadrerFond();
+  bandeau(`Touchez l’intérieur de la pièce${ext() ? " ou de la terrasse" : ""} à calepiner : ses murs seront reconnus. <button type="button" id="piece-non" class="second">Tracer moi-même</button>`);
+  $("piece-non").addEventListener("click", () => { mode = null; bandeau(""); });
+}
 
 /* Volumes */
 const faceM = (g, q, n, uv) => { const b = g.pos.length / 3; for (const v of q) g.pos.push(...v); for (let i = 0; i < 4; i++) g.nor.push(...n); g.uv.push(...uv); g.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); };
