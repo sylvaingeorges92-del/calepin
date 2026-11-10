@@ -1727,6 +1727,7 @@ function dessiner() {
   const c = calepin, ex = c.estExt;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (capture) ctx.clearRect(0, 0, LP, HP); else dessinerFond();
+  if (importEnCours()) { dessinerCalque(); return; }
   if (ex) { ctx.save(); ctx.shadowColor = "rgba(20,30,20,.4)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6; ctx.fillStyle = "#2F271E"; tracerPoly(); ctx.fill(); ctx.restore(); }
   if (!ex) {
     const n = etat.pieces.length, ordre = [...Array(n).keys()].filter(i => i !== etat.active).concat(etat.active);
@@ -1747,8 +1748,15 @@ function dessiner() {
   dessinerCalque();
 }
 const texteCalque = (x, y, t, attrs = "") => { const lp = t.length * 6.8 + 16; return `<g ${attrs}><rect class="c-pastille" x="${x - lp / 2}" y="${y - 12}" width="${lp}" height="24" rx="7"/><text class="c-texte" x="${x}" y="${y}">${t}</text></g>`; };
+const importEnCours = () => !capture && !!fond && !fond.aerien && (mode === "calibrage" || mode === "piece");
 function dessinerCalque() {
   if (vue === "3d" || capture) { if (!capture) calque.innerHTML = ""; return; }
+  if (importEnCours()) {
+    let h = ""; calque.setAttribute("class", "sombre");
+    calibration.forEach(q => { const s = ecran(q); h += `<circle cx="${s.x}" cy="${s.y}" r="7" fill="#E0413A" stroke="#fff" stroke-width="2"/>`; });
+    if (calibration.length === 2) { const a = ecran(calibration[0]), f = ecran(calibration[1]); h += `<line x1="${a.x}" y1="${a.y}" x2="${f.x}" y2="${f.y}" stroke="#E0413A" stroke-width="2" stroke-dasharray="6 5"/>`; }
+    calque.innerHTML = h; return;
+  }
   const c = calepin, pts = etat.poly, nom = nomEtape(), edition = nom === "projet" || nom === "forme", marqueCote = cotes && (nom !== "terrain" || !c.estExt), bordSel = nom === "elements" && etat.ouvertures[choixO] ? ancrage(etat.ouvertures[choixO]).i : -1;
   calque.setAttribute("class", `${c.estExt && !fond ? "" : "sombre"} ${outil === "retirer" ? "retirer" : ""} ${["encoche", "pancoupe"].includes(outil) ? "cible" : ""}`);
   let h = "";
@@ -2125,7 +2133,8 @@ scene.addEventListener("pointerdown", e => {
   const q = pos(e); pointeurs.set(e.pointerId, q); scene.setPointerCapture(e.pointerId);
   const c = e.target.closest ? e.target.closest("[data-s],[data-e],[data-c],[data-co],[data-t],[data-b],[data-m],[data-p],[data-el],[data-er],[data-erot],[data-ex],[data-room],[data-rot]") : null, d = c ? c.dataset : {};
   if (mode === "calibrage" && pointeurs.size === 1) { if (calibration.length < 2) { calibration.push(monde(q.x, q.y)); if (calibration.length === 2) demanderDistance(); planifier(); } return; }
-  if (mode === "piece" && pointeurs.size === 1) { lancerDetection(monde(q.x, q.y)); return; }
+  if ((mode === "piece" || mode === "pieceOk") && pointeurs.size === 1) { lancerDetection(monde(q.x, q.y)); return; }
+  if (mode === "largeur") return;
   if (pointeurs.size === 2) { const [a, b] = [...pointeurs.values()]; geste = { type: "pince", d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, ox: cam.ox, oy: cam.oy, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
   const m = monde(q.x, q.y);
   if (d.b !== undefined) {
@@ -2619,6 +2628,7 @@ function etiquettes() {
 }
 function allerEtape(i) {
   etape = clamp(i, 0, ETAPES.length - 1);
+  if (["calibrage", "piece", "pieceOk", "largeur"].includes(mode)) { mode = null; calibration = []; bandeau(""); } // on quitte l'import du plan
   document.querySelectorAll("[data-etape]").forEach(s => { s.hidden = s.dataset.etape !== nomEtape(); });
   fermerMenu(); afficherOutils(); choisirOutil("ajuster"); etiquettes();
   $("options").scrollTop = 0;
@@ -2909,11 +2919,12 @@ $("fichier").addEventListener("change", async e => {
       image = document.createElement("canvas"); image.width = vp.width; image.height = vp.height;
       await page.render({ canvasContext: image.getContext("2d"), viewport: vp }).promise;
     } else image = await createImageBitmap(f);
-    const bb = boiteEnglobante(etat.poly), l = image.width, h = image.height, m = (bb.umax - bb.umin) * 1.4 / l;
+    const bb = boiteEnglobante(etat.poly), l = image.width, h = image.height, m = devinerEchelle(image, l, h);
     fond = { image, l, h, m, x: (bb.umin + bb.umax) / 2 - l * m / 2, y: (bb.vmin + bb.vmax) / 2 - h * m / 2, opacite: 0.8, angle: 0 };
     mode = "calibrage"; calibration = []; fondActif();
     if (vue !== "plan") changerVue("plan");
-    bandeau("Touchez deux points du plan dont vous connaissez la distance."); planifier();
+    cadrerFond(); bandeau('<b>Réglez l’échelle :</b> touchez deux points du plan dont vous connaissez la distance (une cote, un mur…). <button type="button" id="sans-cote" class="second">Je n’ai pas de cote</button>'); planifier();
+    $("sans-cote").addEventListener("click", () => { fond.nonCalibre = true; calibration = []; proposerDetection(); });
   } catch (err) { bandeau("Ce fichier n’a pas pu être lu. Essayez une image ou un autre PDF."); setTimeout(() => bandeau(""), 3500); }
 });
 function demanderDistance() {
@@ -3065,6 +3076,22 @@ function gommerRessauts(out) {
   }
   return out;
 }
+// Échelle provisoire d'un plan importé, avant tout réglage : a priori d'un document couvrant ~18 m, affiné par l'épaisseur des murs épais (≈ 26 cm).
+function devinerEchelle(image, l, h) {
+  let m = 18 / Math.max(l, h);
+  try {
+    const k = Math.min(1, 700 / Math.max(l, h)), W = Math.max(8, Math.round(l * k)), H = Math.max(8, Math.round(h * k)), c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.drawImage(image, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data, sombre = new Uint8Array(W * H); let n = 0;
+    for (let i = 0, j = 0; i < sombre.length; i++, j += 4) if (((d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8) < 140) { sombre[i] = 1; n++; }
+    const epais = ouvrir(sombre, W, H, 1), total = epais.reduce((a, b) => a + b, 0);
+    if (total > W * H * 0.002) {
+      let r = 1; for (; r < 40; r++) if (eroder(epais, W, H, r).reduce((a, b) => a + b, 0) < total * 0.04) break;
+      const m2 = 0.26 / (2 * r / k); if (m2 > m * 0.35 && m2 < m * 3) m = m2;
+    }
+  } catch (e) {}
+  return m;
+}
 // Pixel libre le plus proche du point touché (le doigt tombe parfois sur un trait ou un texte).
 function pixelLibre(libre, W, H, x0, y0, rmax) {
   if (libre[y0 * W + x0]) return [x0, y0];
@@ -3083,14 +3110,16 @@ function detecterPiece(m) {
   const R = rasteriserFond(), { W, H, sombre, ppm } = R, px = pixelFond(m), x0 = Math.round(px.x * R.kx), y0 = Math.round(px.y * R.ky);
   if (x0 < 1 || y0 < 1 || x0 >= W - 1 || y0 >= H - 1) return null;
   const mm = v => Math.max(1, Math.round(v * ppm)), aireMin = 0.6 * ppm * ppm, aireMax = 200 * ppm * ppm, compte = z => z.reduce((a, b) => a + b, 0);
-  // Deux lectures des murs : traits épais seulement (plans d'architecte : mobilier et textes ignorés), puis tous les traits (croquis au trait fin).
-  const lectures = [fermer(ouvrir(sombre, W, H, mm(0.035)), W, H, mm(0.08)), fermer(sombre, W, H, mm(0.02))];
+  // Trois lectures des murs : traits épais seulement (plans à murs pleins : mobilier et textes ignorés) ; murs creux ou hachurés remplis
+  // (double trait fermé, puis gros blocs de mobilier écartés) ; enfin tous les traits (croquis au trait fin).
+  const creux = (() => { const m2 = ouvrir(fermer(sombre, W, H, mm(0.18)), W, H, mm(0.035)), gros = dilater(ouvrir(m2, W, H, mm(0.25)), W, H, 1), o = new Uint8Array(W * H); for (let i = 0; i < o.length; i++) o[i] = m2[i] && !gros[i] ? 1 : 0; return o; })();
+  const lectures = [fermer(ouvrir(sombre, W, H, mm(0.035)), W, H, mm(0.08)), creux, fermer(sombre, W, H, mm(0.02))];
   for (let [num, murs] of lectures.entries()) {
     murs = grandsComposants(murs, W, H, Math.round(1 * ppm * ppm), mm(1.6));
     const libre0 = new Uint8Array(W * H); for (let i = 0; i < libre0.length; i++) libre0[i] = murs[i] ? 0 : 1;
     // En lecture « traits épais », les traits des fenêtres ont disparu : on referme les façades en interdisant une mince bande le long de l'extérieur.
     let libre = libre0, dehors = null;
-    if (num === 0) {
+    if (num <= 1) {
       // Enveloppe du bâtiment : murs épais refermés à grande échelle (baies et fenêtres bouchées), puis extérieur = ce qui reste dehors.
       const enveloppe = fermer(murs, W, H, mm(1.3)), horsEnv = new Uint8Array(W * H); for (let i = 0; i < horsEnv.length; i++) horsEnv[i] = enveloppe[i] ? 0 : 1;
       const bande = dilater(masqueExterieur(horsEnv, W, H, ppm), W, H, mm(0.12)); libre = new Uint8Array(W * H); for (let i = 0; i < libre.length; i++) libre[i] = libre0[i] && !bande[i] ? 1 : 0;
@@ -3151,6 +3180,32 @@ function detecterOuvertures(pts, R, murs, libre, sombre, dehors) {
       const type = exterieur ? (arc ? (L < 1.2 ? "porte" : "baie") : L >= 1.6 && !traits ? "baie" : "fenetre") : (arc || L <= 1.05 ? "porte" : traits ? "fenetre" : "passage");
       out.push({ type, x: Math.round(cx * 100) / 100, y: Math.round(cy * 100) / 100, l: Math.max(0.6, Math.round(L * 20) / 20) });
     }
+    // Fenêtres dessinées par des traits continus dans l'épaisseur du mur (murs creux ou hachurés remplis : pas de trou à cet endroit).
+    const epM = Math.max(epaisseur(A, ux, uy, nx, ny, len / 2), epaisseur(A, ux, uy, nx, ny, len / 4), epaisseur(A, ux, uy, nx, ny, 3 * len / 4));
+    if (epM >= 0.1) {
+      const plages = [];
+      for (let d = 0.07; d <= epM - 0.07; d += 0.015) {
+        let deb = -1, trous = 0;
+        for (let k = 0; k <= N; k++) {
+          const t = (k + 0.5) * pas, noir = k < N && lit(sombre, px({ x: A.x + ux * t + nx * d, y: A.y + uy * t + ny * d }));
+          if (noir) { if (deb < 0) deb = t; trous = 0; } else if (deb >= 0 && ++trous > 2) { const fin = t - trous * pas; if (fin - deb >= 0.5) plages.push([deb, fin]); deb = -1; }
+        }
+      }
+      plages.sort((a, b) => a[0] - b[0]);
+      const fusion = []; for (const q of plages) { const l = fusion[fusion.length - 1]; if (l && q[0] <= l[1] + 0.1) l[1] = Math.max(l[1], q[1]); else fusion.push([...q]); }
+      for (const [t0, t1] of fusion) {
+        const L = t1 - t0; if (L < 0.5 || L > len - 0.2) continue;
+        const tc = (t0 + t1) / 2, cx = A.x + ux * tc, cy = A.y + uy * tc;
+        if (out.some(o => Math.hypot(o.x - cx, o.y - cy) < (o.l + L) / 2)) continue;
+        // Un mur plein (lecture épaisse) donne aussi des traits continus : on exige que le milieu du mur soit majoritairement blanc en dehors de la plage.
+        const hors = densite(sombre, A, ux, uy, nx, ny, 0.1, Math.max(0.1, t0 - 0.1), epM / 2 - 0.01, epM / 2 + 0.01) + densite(sombre, A, ux, uy, nx, ny, Math.min(len - 0.1, t1 + 0.1), len - 0.1, epM / 2 - 0.01, epM / 2 + 0.01);
+        if (hors > 0.9) continue;
+        let exterieur = false;
+        for (const d of [epM + 0.2, epM + 0.4, epM + 0.65]) { const q = px({ x: cx + nx * d, y: cy + ny * d }); if (dehors) { if (lit(dehors, q)) { exterieur = true; break; } if (lit(libre, q)) break; continue; } if (!lit(libre, q)) continue; const z = remplir(libre, W, H, q.x | 0, q.y | 0); if (z) exterieur = z.bord || z.aire > Math.max(25, 0.8 * aireP) * ppm * ppm; break; }
+        if (!exterieur) continue;
+        out.push({ type: L >= 1.9 ? "baie" : "fenetre", x: Math.round(cx * 100) / 100, y: Math.round(cy * 100) / 100, l: Math.round(L * 20) / 20 });
+      }
+    }
   }
   return out;
 }
@@ -3159,13 +3214,14 @@ function lancerDetection(m) {
   setTimeout(() => {
     let res = null; try { res = detecterPiece(m); } catch (e) { res = null; }
     const pts = res && res.pts;
+    if (pts && fond.nonCalibre) { demanderLargeur(pts, m); return; }
     if (!pts) { bandeau('Pas de pièce fermée à cet endroit. Touchez un autre point à l’intérieur de la pièce, ou <button type="button" id="piece-non">tracez les murs vous-même</button>.'); $("piece-non").addEventListener("click", () => { mode = null; bandeau(""); }); return; }
-    memoriser(); etat.poly = pts; etat.forme = null; etat.ouvertures = res.ouv; synchroniser();
+    mode = "pieceOk"; memoriser(); etat.poly = pts; etat.forme = null; etat.ouvertures = res.ouv; synchroniser();
     const nb = {}; for (const o of res.ouv) nb[o.type] = (nb[o.type] || 0) + 1;
     const txtOuv = Object.entries(nb).map(([t, n]) => `${n} ${OUVERTURES[t].nom.toLowerCase()}${n > 1 ? "s" : ""}`).join(", ");
     bandeau(`Pièce détectée : ${fr(Math.abs(aireSignee(pts)), 1)} m², ${pts.length} côtés${txtOuv ? ", " + txtOuv : ""}. <button type="button" id="piece-ok">C’est bon</button><button type="button" id="piece-autre" class="second">Autre pièce</button>`);
     $("piece-ok").addEventListener("click", () => { mode = null; bandeau(""); cadrer(); toast("Ajustez les sommets si besoin, puis passez à la suite."); });
-    $("piece-autre").addEventListener("click", () => { mode = "piece"; bandeau("Touchez l’intérieur de la pièce à calepiner."); });
+    $("piece-autre").addEventListener("click", () => { bandeau("Touchez l’intérieur de la pièce à calepiner."); });
   }, 30);
 }
 // Cadre le plan importé en entier, pour pouvoir désigner n'importe quelle pièce.
@@ -3174,6 +3230,23 @@ function cadrerFond() {
   const coins = [[0, 0], [fond.l, 0], [fond.l, fond.h], [0, fond.h]].map(([x, y]) => pointFond(x, y)), bb = boiteEnglobante(coins), m = etroit() ? 60 : 80;
   const w = Math.max(40, LP - 2 * m), h = Math.max(40, HP - 100 - m);
   cam.z = Math.min(w / (bb.umax - bb.umin), h / (bb.vmax - bb.vmin), 110); cam.ox = m + w / 2 - (bb.umin + bb.umax) / 2 * cam.z; cam.oy = 100 + h / 2 - (bb.vmin + bb.vmax) / 2 * cam.z; planifier();
+}
+// Échelle inconnue : on prend la largeur réelle du plus grand côté de la pièce reconnue, on règle le plan dessus, puis on recommence la reconnaissance à la bonne échelle.
+function demanderLargeur(pts, m) {
+  let L = 0, A = pts[0], B = pts[1];
+  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length], l = Math.hypot(b.x - a.x, b.y - a.y); if (l > L) { L = l; A = a; B = b; } }
+  mode = "largeur"; memoriser(); etat.poly = pts; etat.ouvertures = []; synchroniser(); planifier();
+  bandeau(`<label for="larg">Le côté en pointillés rouges mesure, en réalité (m)</label><input id="larg" type="text" inputmode="decimal" value="${fr(L, 2)}"><button type="button" id="larg-ok">Valider</button>`);
+  calibration = [A, B]; planifier();
+  const champ = $("larg"); champ.focus(); champ.select();
+  const ok = () => {
+    const v = parseFloat(champ.value.replace(",", ".")); if (!(v > 0)) return;
+    const f = v / L, cx = (A.x + B.x) / 2, cy = (A.y + B.y) / 2;
+    fond.m *= f; fond.x = cx + (fond.x - cx) * f; fond.y = cy + (fond.y - cy) * f; fond.nonCalibre = false; calibration = []; rasterFond = null;
+    const m2 = { x: cx + (m.x - cx) * f, y: cy + (m.y - cy) * f }; // le point touché, à la nouvelle échelle
+    toast("Échelle réglée sur cette pièce."); cadrerFond(); lancerDetection(m2);
+  };
+  $("larg-ok").addEventListener("click", ok); champ.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
 }
 function proposerDetection() {
   mode = "piece"; rasterFond = null; cadrerFond();
